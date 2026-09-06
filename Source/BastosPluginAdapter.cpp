@@ -8,7 +8,6 @@ START_NAMESPACE_DISTRHO
 
 namespace {
 float dbToGain(float db) noexcept { return std::pow(10.f, db / 20.f); }
-float gainToDb(float gain) noexcept { return gain > 1e-7f ? 20.f * std::log10(gain) : -100.f; }
 }
 
 BastosPluginAdapter::BastosPluginAdapter()
@@ -198,7 +197,7 @@ void BastosPluginAdapter::run(const float** inputs, float** outputs, const uint3
         inPeak = std::max(inPeak, std::abs(inputs[0][i]));
         inPeak = std::max(inPeak, std::abs(inputs[1][i]));
     }
-    inputLevelMeter_.write(gainToDb(inPeak));
+    inputLevelMeter_.write(inPeak);
 
     if (outputs[0] != inputs[0]) std::memcpy(outputs[0], inputs[0], sizeof(float) * frames);
     if (outputs[1] != inputs[1]) std::memcpy(outputs[1], inputs[1], sizeof(float) * frames);
@@ -241,7 +240,7 @@ void BastosPluginAdapter::run(const float** inputs, float** outputs, const uint3
         outPeak = std::max(outPeak, std::abs(outputs[0][i]));
         outPeak = std::max(outPeak, std::abs(outputs[1][i]));
     }
-    outputLevelMeter_.write(gainToDb(outPeak));
+    outputLevelMeter_.write(outPeak);
 }
 
 Plugin* createPlugin() { return new BastosPluginAdapter(); }
