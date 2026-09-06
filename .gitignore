@@ -1,2 +1,4 @@
 build/
 build-release/
+.claude/worktrees/
+.superpowers/
