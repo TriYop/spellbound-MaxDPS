@@ -17,16 +17,16 @@ echo "Uninstalling Bastos..."
 
 remove "${HOME}/.vst3/Bastos.vst3"
 remove "${HOME}/.clap/Bastos.clap"
-remove "${HOME}/.local/bin/Bastos"
+remove "${HOME}/.lv2/Bastos.lv2"
 
 if [[ $EUID -eq 0 ]]; then
     remove "/usr/lib/vst3/Bastos.vst3"
     remove "/usr/lib/clap/Bastos.clap"
-    remove "/usr/local/bin/Bastos"
+    remove "/usr/lib/lv2/Bastos.lv2"
 else
     for path in "/usr/lib/vst3/Bastos.vst3" \
                 "/usr/lib/clap/Bastos.clap" \
-                "/usr/local/bin/Bastos"; do
+                "/usr/lib/lv2/Bastos.lv2"; do
         if [[ -e "$path" ]]; then
             echo "  Skipping $path (re-run with sudo to remove)"
         fi

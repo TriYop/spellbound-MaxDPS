@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install Bastos plugins and standalone app.
+# Install Bastos plugins (VST3/CLAP/LV2). Bastos is an effect -- no standalone app.
 # Usage:
 #   ./install.sh           — install to user directories (no root needed)
 #   ./install.sh --system  — install system-wide to /usr/lib (requires sudo)
@@ -18,11 +18,11 @@ done
 if [[ $SYSTEM -eq 1 ]]; then
     VST3_DIR="/usr/lib/vst3"
     CLAP_DIR="/usr/lib/clap"
-    BIN_DIR="/usr/local/bin"
+    LV2_DIR="/usr/lib/lv2"
 else
     VST3_DIR="${HOME}/.vst3"
     CLAP_DIR="${HOME}/.clap"
-    BIN_DIR="${HOME}/.local/bin"
+    LV2_DIR="${HOME}/.lv2"
 fi
 
 echo "Installing Bastos..."
@@ -37,9 +37,9 @@ cp       "${SCRIPT_DIR}/CLAP/Bastos.clap" "${CLAP_DIR}/"
 chmod    755 "${CLAP_DIR}/Bastos.clap"
 echo "  CLAP  → ${CLAP_DIR}/Bastos.clap"
 
-mkdir -p "${BIN_DIR}"
-cp       "${SCRIPT_DIR}/bin/Bastos" "${BIN_DIR}/"
-chmod    755 "${BIN_DIR}/Bastos"
-echo "  App   → ${BIN_DIR}/Bastos"
+mkdir -p "${LV2_DIR}"
+rm -rf   "${LV2_DIR}/Bastos.lv2"
+cp -r    "${SCRIPT_DIR}/LV2/Bastos.lv2" "${LV2_DIR}/"
+echo "  LV2   → ${LV2_DIR}/Bastos.lv2"
 
 echo "Done."
