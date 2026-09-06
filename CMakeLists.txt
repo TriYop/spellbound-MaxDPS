@@ -82,9 +82,11 @@ target_include_directories(test_transientshapercore PRIVATE Source/ Tests/)
 target_compile_features(test_transientshapercore PRIVATE cxx_std_20)
 add_test(NAME TransientShaperCore COMMAND test_transientshapercore)
 
-# Task 5's FactoryPresets test target is appended here once it exists --
-# deliberately not included yet, so this task's own build-verification step
-# only references files that exist at this point in the plan.
+add_executable(test_factorypresets Tests/test_factorypresets.cpp)
+target_include_directories(test_factorypresets PRIVATE Source/ Tests/)
+target_link_libraries(test_factorypresets PRIVATE AudioPluginsCommon::presets)
+target_compile_features(test_factorypresets PRIVATE cxx_std_20)
+add_test(NAME FactoryPresets COMMAND test_factorypresets)
 
 # ── Install rules ─────────────────────────────────────────────────────────
 # DPF writes all format outputs under a flat bin/ dir -- no Standalone
