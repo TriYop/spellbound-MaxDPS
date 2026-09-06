@@ -69,6 +69,7 @@ FetchContent_MakeAvailable(AudioPluginsCommon)
 # into a common `Bastos` static lib plus `Bastos-dsp`/`Bastos-ui`; BastosUI.cpp
 # is the only consumer of the widgets/presets and lives in `Bastos-ui`.
 target_link_libraries(Bastos-ui PRIVATE AudioPluginsCommon::hui_dgl AudioPluginsCommon::presets)
+target_link_libraries(Bastos PUBLIC AudioPluginsCommon::io)
 
 # ── Unit tests (no JUCE/DPF dependency) ──────────────────────────────────
 enable_testing()
