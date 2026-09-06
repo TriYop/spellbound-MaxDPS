@@ -7,108 +7,126 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(FetchContent)
 
-FetchContent_Declare(
-    JUCE
-    GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
-    GIT_TAG        8.0.13
+# DPF has no tagged releases -- pin the exact commit SHA Hex/Pugilist/Tank/
+# Outflank all use.
+set(AUDIOPLUGINS_DPF_GIT_TAG "4238e1c7f0351bbe488d79f0899c540543ac7583" CACHE STRING "Pinned DPF commit")
+
+# CAVEAT: the patch step only runs on a fresh population of build/_deps/dpf-src.
+# Delete it (or all of build/) when you need to be sure the patches took effect;
+# cmake/apply_patch.cmake is idempotent but that's not a substitute for a clean re-fetch.
+FetchContent_Declare(dpf
+    GIT_REPOSITORY https://github.com/DISTRHO/DPF.git
+    GIT_TAG        ${AUDIOPLUGINS_DPF_GIT_TAG}
     GIT_SHALLOW    TRUE
+    PATCH_COMMAND  ${CMAKE_COMMAND}
+                   -DPATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/patches/dpf-clap-state-chunked-read.patch
+                   -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/apply_patch.cmake
+            COMMAND ${CMAKE_COMMAND}
+                   -DPATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/patches/dpf-clap-activate-latency.patch
+                   -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/apply_patch.cmake
 )
-FetchContent_MakeAvailable(JUCE)
+FetchContent_MakeAvailable(dpf)
 
-set(CLAP_JUCE_EXTENSIONS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-FetchContent_Declare(
-    clap-juce-extensions
-    GIT_REPOSITORY https://github.com/free-audio/clap-juce-extensions.git
-    GIT_TAG        main
-)
-FetchContent_MakeAvailable(clap-juce-extensions)
-
-set(BASTOS_FORMATS VST3 Standalone)
+set(BASTOS_DPF_TARGETS vst3 clap lv2)
 if(APPLE)
-    list(APPEND BASTOS_FORMATS AU)
+    list(APPEND BASTOS_DPF_TARGETS au)
 endif()
 
-juce_add_plugin(Bastos
-    COMPANY_NAME                "YvanJanet"
-    PLUGIN_MANUFACTURER_CODE    Yjnt
-    PLUGIN_CODE                 Bsts
-    FORMATS                     ${BASTOS_FORMATS}
-    PRODUCT_NAME                "Bastos"
-    BUNDLE_ID                   "com.yvanjanet.bastos"
-    IS_SYNTH                    FALSE
-    NEEDS_MIDI_INPUT            FALSE
-    NEEDS_MIDI_OUTPUT           FALSE
-    IS_MIDI_EFFECT              FALSE
-    EDITOR_WANTS_KEYBOARD_FOCUS FALSE
-    DESCRIPTION                 "Bass enhancer and transient shaper"
+dpf_add_plugin(Bastos
+    TARGETS ${BASTOS_DPF_TARGETS}
+    UI_TYPE opengl
+    USE_FILE_BROWSER TRUE
+    FILES_DSP
+        Source/BastosPluginAdapter.cpp
+        Source/DSP/TransientShaperCore.cpp
+    FILES_UI
+        Source/BastosUI.cpp
 )
 
-target_sources(Bastos PRIVATE
-    Source/PluginProcessor.cpp
-    Source/PluginEditor.cpp
-    Source/DSP/TransientShaper.cpp
+target_include_directories(Bastos PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Source")
+
+# DPF's dpf_add_plugin() unconditionally compiles a WebViewImpl.cpp that uses
+# the GNU `typeof` extension and fails under strict ISO C++ -- same workaround
+# every prior migration in this workspace needs (see Hex's CMakeLists.txt).
+if(TARGET dgl-opengl)
+    set_target_properties(dgl-opengl PROPERTIES CXX_EXTENSIONS ON)
+endif()
+
+# ── Shared HUI library ────────────────────────────────────────────────────
+# ORDERING (load-bearing): must come after dpf_add_plugin(Bastos ...), which
+# is what lazily creates DPF's dgl-opengl target that AudioPluginsCommon::
+# hui_dgl is guarded on.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+FetchContent_Declare(AudioPluginsCommon
+    GIT_REPOSITORY https://github.com/TriYop/spellbound-common.git
+    GIT_TAG        v0.4.0
+    GIT_SHALLOW    TRUE
 )
+FetchContent_MakeAvailable(AudioPluginsCommon)
 
-target_compile_definitions(Bastos PUBLIC
-    JUCE_WEB_BROWSER=0
-    JUCE_USE_CURL=0
-    JUCE_VST3_CAN_REPLACE_VST2=0
+# Linked into `Bastos-ui` (not `Bastos`): dpf_add_plugin() splits the plugin
+# into a common `Bastos` static lib plus `Bastos-dsp`/`Bastos-ui`; BastosUI.cpp
+# is the only consumer of the widgets/presets and lives in `Bastos-ui`.
+target_link_libraries(Bastos-ui PRIVATE AudioPluginsCommon::hui_dgl AudioPluginsCommon::presets)
+
+# ── Unit tests (no JUCE/DPF dependency) ──────────────────────────────────
+enable_testing()
+
+add_executable(test_transientshapercore
+    Tests/test_transientshapercore.cpp
+    Source/DSP/TransientShaperCore.cpp
 )
+target_include_directories(test_transientshapercore PRIVATE Source/ Tests/)
+target_compile_features(test_transientshapercore PRIVATE cxx_std_20)
+add_test(NAME TransientShaperCore COMMAND test_transientshapercore)
 
-target_include_directories(Bastos PRIVATE Source/)
+# Task 5's FactoryPresets test target is appended here once it exists --
+# deliberately not included yet, so this task's own build-verification step
+# only references files that exist at this point in the plan.
 
-target_compile_features(Bastos PUBLIC cxx_std_20)
-
-target_link_libraries(Bastos
-    PRIVATE
-        juce::juce_audio_utils
-        juce::juce_audio_plugin_client
-        juce::juce_dsp
-        clap_juce_extensions
-    PUBLIC
-        juce::juce_recommended_config_flags
-        juce::juce_recommended_lto_flags
-        juce::juce_recommended_warning_flags
-)
-
-clap_juce_extensions_plugin(
-    TARGET      Bastos
-    CLAP_ID     "com.yvanjanet.bastos"
-    CLAP_FEATURES audio-effect utility
-    CLAP_PROCESS_EVENTS_RESOLUTION_SAMPLES 64
-)
-
-# ── Install rules ─────────────────────────────────────────────────────────────
+# ── Install rules ─────────────────────────────────────────────────────────
+# DPF writes all format outputs under a flat bin/ dir -- no Standalone
+# target: Bastos is an effect, and this workspace only requires Standalone
+# for instruments.
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
 endif()
 
-set(_ARTS "${CMAKE_BINARY_DIR}/Bastos_artefacts/${CMAKE_BUILD_TYPE}")
+set(_BIN "${CMAKE_BINARY_DIR}/bin")
 
-install(DIRECTORY  "${_ARTS}/VST3/Bastos.vst3"
+install(DIRECTORY  "${_BIN}/Bastos.vst3"
         DESTINATION VST3
         COMPONENT   Runtime
         USE_SOURCE_PERMISSIONS)
 
-install(FILES      "${_ARTS}/CLAP/Bastos.clap"
-        DESTINATION CLAP
-        COMPONENT   Runtime
-        PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
-                    GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+if(APPLE)
+    install(DIRECTORY  "${_BIN}/Bastos.clap"
+            DESTINATION CLAP
+            COMPONENT   Runtime
+            USE_SOURCE_PERMISSIONS)
+else()
+    install(FILES      "${_BIN}/Bastos.clap"
+            DESTINATION CLAP
+            COMPONENT   Runtime
+            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                        GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+endif()
 
-install(PROGRAMS   "${_ARTS}/Standalone/Bastos"
-        DESTINATION bin
-        COMPONENT   Runtime)
+install(DIRECTORY  "${_BIN}/Bastos.lv2"
+        DESTINATION LV2
+        COMPONENT   Runtime
+        USE_SOURCE_PERMISSIONS)
 
 install(PROGRAMS   "${CMAKE_CURRENT_SOURCE_DIR}/scripts/install.sh"
                    "${CMAKE_CURRENT_SOURCE_DIR}/scripts/uninstall.sh"
         DESTINATION .
         COMPONENT   Runtime)
 
-# ── CPack (TGZ) ───────────────────────────────────────────────────────────────
+# ── CPack (TGZ) ─────────────────────────────────────────────────────────────
 set(CPACK_GENERATOR                 TGZ)
 set(CPACK_PACKAGE_NAME              Bastos)
-set(CPACK_PACKAGE_VENDOR            YvanJanet)
+set(CPACK_PACKAGE_VENDOR            Spellbound)
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Bass enhancer and transient shaper")
 set(CPACK_PACKAGE_VERSION           ${PROJECT_VERSION})
 set(CPACK_SYSTEM_NAME               linux-x86_64)
