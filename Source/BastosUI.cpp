@@ -1,4 +1,8 @@
 #include "BastosUI.h"
+#include "FactoryPresets.h"
+
+#include <cstdlib>
+#include <string>
 
 START_NAMESPACE_DISTRHO
 
@@ -29,12 +33,48 @@ hui::dgl::RotaryKnobPalette paletteFor(const hui::Colour& accent)
     return p;
 }
 
+// Button/PresetSelector palettes: same section-bg/accent tones as the
+// knobs, since both palette structs are deliberately generic (see Common's
+// Button.h/PresetSelector.h) -- same convention as Hex's HexUI.cpp.
+const hui::dgl::ButtonPalette kBastosButtonPalette = {
+    /* background         */ kSectionBg,
+    /* backgroundDisabled */ kBg,
+    /* border             */ kGlobAccent,
+    /* text               */ {0xdd, 0xdd, 0xdd, 0xff},
+    /* textDisabled       */ {0x66, 0x66, 0x66, 0xff},
+};
+
+const hui::dgl::PresetSelectorPalette kBastosPresetSelectorPalette = {
+    /* closedBackground */ kSectionBg,
+    /* listBackground   */ kBg,
+    /* border           */ kGlobAccent,
+    /* text             */ {0xdd, 0xdd, 0xdd, 0xff},
+    /* textFactory      */ {0xaa, 0xaa, 0xaa, 0xff},
+    /* rowHighlight     */ {0xaa, 0xaa, 0x66, 0x40},
+};
+
 // Layout ported from the JUCE-era resized(): kW=660, kH=460, kKnobSize=72,
 // three ATTACK/SUSTAIN/GLOBAL columns plus a 2-meter strip on the right.
-constexpr int kW = 660, kH = 460;
+// kH grows by kPresetBarH (24px) to fit the new preset bar above the
+// existing panel; every Y origin below that used to start at kHeaderH +
+// kMargin now starts kPresetBarH lower, matching Hex/Tank's precedent.
+constexpr int kW = 660, kH = 484;
 constexpr int kHeaderH = 36, kMargin = 10, kGap = 8;
 constexpr int kKnobSize = 72, kLabelH = 16, kMeterW = 14;
 constexpr int kAtkW = 240, kSusW = 240;
+
+// Preset bar: a new 24px row above the header, left-aligned -- same
+// constant values/spacing as Hex's HexUI.cpp (no reason to invent
+// different numbers for the same-shaped UI element).
+constexpr int kPresetBarH = 24;
+constexpr float kPresetBarX = 8.0f;
+constexpr float kPresetBarY = 8.0f;
+constexpr uint  kPresetBarRowH = 24;
+constexpr uint  kPresetSelectorW = 220;
+constexpr uint  kPresetButtonW = 56;
+constexpr float kPresetButtonGap = 6.0f;
+constexpr float kSaveButtonX = kPresetBarX + static_cast<float>(kPresetSelectorW) + 8.0f;
+constexpr float kDeleteButtonX = kSaveButtonX + static_cast<float>(kPresetButtonW) + kPresetButtonGap;
 
 struct KnobSpec { float min, max, def; hui::Colour accent; int col, row; };
 
@@ -85,14 +125,71 @@ std::unique_ptr<hui::dgl::RotaryKnob> makeKnob(BastosUI& ui, const KnobSpec& spe
     return knob;
 }
 
+std::unique_ptr<hui::dgl::PresetSelector> makePresetSelector(BastosUI& ui)
+{
+    std::unique_ptr<hui::dgl::PresetSelector> selector(new hui::dgl::PresetSelector(&ui));
+    selector->setPalette(kBastosPresetSelectorPalette);
+    selector->setClosedSize(kPresetSelectorW, kPresetBarRowH);
+    selector->setAbsolutePos(static_cast<int>(kPresetBarX), static_cast<int>(kPresetBarY));
+    return selector;
+}
+
+std::unique_ptr<hui::dgl::Button> makeButton(BastosUI& ui, const char* label, float x)
+{
+    std::unique_ptr<hui::dgl::Button> button(new hui::dgl::Button(&ui));
+    button->setPalette(kBastosButtonPalette);
+    button->setLabel(label);
+    button->setSize(kPresetButtonW, kPresetBarRowH);
+    button->setAbsolutePos(static_cast<int>(x), static_cast<int>(kPresetBarY));
+    return button;
+}
+
+// Linux-only for now, matching Hex's hexUserPresetsDirectory() precedent
+// (~/.config/<Name>/presets).
+std::string bastosUserPresetsDirectory()
+{
+    const char* home = std::getenv("HOME");
+    if (home == nullptr)
+        return "/tmp/Bastos/presets"; // extremely unlikely fallback, still functional
+    return std::string(home) + "/.config/Bastos/presets";
+}
+
+// Table-driven mapping between BASTOS_PARAM symbol strings and their DPF
+// parameter index, shared by applyPreset() and captureCurrentParameters()
+// so the 13 id strings are written exactly once, not duplicated in both
+// directions.
+struct ParamIdEntry { const char* id; uint32_t index; };
+
+constexpr int kNumParamIds = 13;
+
+constexpr ParamIdEntry kParamIds[kNumParamIds] = {
+    {"atk_gain",        kParameterAtkGain},
+    {"atk_sub_count",   kParameterAtkSubCount},
+    {"atk_sub_level",   kParameterAtkSubLevel},
+    {"atk_upper_count", kParameterAtkUpperCount},
+    {"atk_upper_level", kParameterAtkUpperLevel},
+    {"sus_gain",        kParameterSusGain},
+    {"sus_sub_count",   kParameterSusSubCount},
+    {"sus_sub_level",   kParameterSusSubLevel},
+    {"sus_upper_count", kParameterSusUpperCount},
+    {"sus_upper_level", kParameterSusUpperLevel},
+    {"speed",           kParameterSpeed},
+    {"output_gain",     kParameterOutputGain},
+    {"mix",             kParameterMix},
+};
+
 } // namespace
 
 BastosUI::BastosUI()
     : UI(DISTRHO_UI_DEFAULT_WIDTH, DISTRHO_UI_DEFAULT_HEIGHT),
-      pluginPtr_(static_cast<BastosPluginAdapter*>(getPluginInstancePointer()))
+      pluginPtr_(static_cast<BastosPluginAdapter*>(getPluginInstancePointer())),
+      presetBrowser_(bastosFactoryPresets(), bastosUserPresetsDirectory(), "com.spellbound.bastos"),
+      presetSelector_(makePresetSelector(*this)),
+      saveButton_(makeButton(*this, "SAVE", kSaveButtonX)),
+      deleteButton_(makeButton(*this, "DELETE", kDeleteButtonX))
 {
     const int colX[3] = { kMargin, kMargin + kAtkW + kGap, kMargin + kAtkW + kGap + kSusW + kGap };
-    const int bodyY = kHeaderH + kMargin;
+    const int bodyY = kPresetBarH + kHeaderH + kMargin;
     const int rowH  = kKnobSize + kLabelH + kGap;
 
     // Two knobs per row for the sub/upper pairs (rows 1/2); one per row 0/global.
@@ -118,6 +215,92 @@ BastosUI::BastosUI()
     inMeter_->setSize(kMeterW, static_cast<uint>(meterH));
     outMeter_->setAbsolutePos(meterX + kMeterW + kGap, meterY);
     outMeter_->setSize(kMeterW, static_cast<uint>(meterH));
+
+    presetSelector_->onIndexSelected = [this](const int index)
+    {
+        if (const auto* preset = presetBrowser_.selectIndex(index))
+        {
+            applyPreset(*preset);
+            refreshPresetControls();
+        }
+    };
+
+    deleteButton_->onClick = [this]()
+    {
+        if (presetBrowser_.deleteCurrent())
+            refreshPresetControls();
+    };
+
+    saveButton_->onClick = [this]()
+    {
+        const std::string startDir = bastosUserPresetsDirectory();
+        FileBrowserOptions options;
+        options.saving = true;
+        options.defaultName = "New Preset.xml";
+        options.title = "Save Bastos Preset";
+        options.startDir = startDir.c_str();
+        openFileBrowser(options);
+    };
+
+    refreshPresetControls();
+}
+
+void BastosUI::uiFileBrowserSelected(const char* filename)
+{
+    if (filename == nullptr)
+        return; // user cancelled the dialog
+
+    std::string path(filename);
+    const size_t slash = path.find_last_of("/\\");
+    std::string base = (slash == std::string::npos) ? path : path.substr(slash + 1);
+    const size_t dot = base.find_last_of('.');
+    if (dot != std::string::npos)
+        base = base.substr(0, dot);
+
+    if (presetBrowser_.saveAs(base, captureCurrentParameters()))
+        refreshPresetControls();
+}
+
+void BastosUI::applyPreset(const audioplugins::common::presets::Preset& preset)
+{
+    for (const auto& pv : preset.parameters)
+    {
+        for (const auto& entry : kParamIds)
+        {
+            if (pv.id == entry.id)
+            {
+                knobs_[entry.index]->setValue(pv.value);
+                editParameter(entry.index, true);
+                setParameterValue(entry.index, pv.value);
+                editParameter(entry.index, false);
+                break;
+            }
+        }
+        // Unknown id (forward-compatible with a future schema addition) --
+        // ignored if no entry matched.
+    }
+}
+
+std::vector<audioplugins::common::presets::ParameterValue> BastosUI::captureCurrentParameters() const
+{
+    std::vector<audioplugins::common::presets::ParameterValue> parameters;
+    parameters.reserve(kNumParamIds);
+    for (const auto& entry : kParamIds)
+        parameters.push_back({entry.id, knobs_[entry.index]->getValue()});
+    return parameters;
+}
+
+void BastosUI::refreshPresetControls()
+{
+    presetSelector_->setEntries(presetBrowser_.getEntries());
+    presetSelector_->setCurrentIndex(presetBrowser_.getCurrentIndex());
+
+    const auto entries = presetBrowser_.getEntries();
+    const int idx = presetBrowser_.getCurrentIndex();
+    const bool isFactory = (idx >= 0 && static_cast<size_t>(idx) < entries.size())
+                                ? entries[static_cast<size_t>(idx)].isFactory
+                                : true;
+    deleteButton_->setEnabled(!isFactory);
 }
 
 void BastosUI::parameterChanged(const uint32_t index, const float value)
@@ -157,7 +340,7 @@ void BastosUI::onNanoDisplay()
     // Section backgrounds -- plain rounded rects, ported from the JUCE-era
     // drawSectionBg() (no reusable "panel" widget exists in Common, and one
     // rounded rect + a label doesn't warrant adding one).
-    const int bodyY = kHeaderH + kMargin;
+    const int bodyY = kPresetBarH + kHeaderH + kMargin;
     const int bodyH = kH - bodyY - kMargin;
     const int atkX = kMargin, susX = atkX + kAtkW + kGap, globX = susX + kSusW + kGap;
     const int globW = kW - globX - kMargin - 2 * kMeterW - kGap * 2;
