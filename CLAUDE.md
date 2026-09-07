@@ -4,12 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Bastos is a JUCE audio effect plugin (VST3 / CLAP / Standalone) combining a **bass enhancer** and a **transient shaper**, targeting kick drum processing and general low-frequency content shaping. It is an effect — audio is modified in-place, not analyzed.
+Spellbound Bastos is a DPF audio **effect** plugin (VST3 / CLAP / LV2) combining a dual-envelope (fast/sustain) transient designer with independent sub-harmonic and upper-harmonic generation per phase, targeting kick drum processing and general low-frequency transient shaping. It is an effect -- audio is modified in-place, not analyzed. There is no bypass parameter and no bandpass/dynamic-EQ mode -- an earlier version of this document described a "BassEnhancer" stage and bypass/bandpass controls that were never actually implemented; ignore any reference to those elsewhere, they do not exist in this codebase.
 
-- **Bass enhancer**: generates sub-octave harmonics via half-wave rectification + filtering, blended into the dry signal
-- **Transient shaper**: dual-envelope detector (fast − slow) that applies gain shaping during attacks and decays, optionally limited to a bandpass-filtered band (making it act as a dynamic EQ on transients)
-
-Each stage has an independent bypass switch. Input and output level meters are displayed in the UI.
+**Current state: migrated off JUCE onto DPF.** `Source/DSP/TransientShaperCore.h/.cpp` is a framework-free port of the original JUCE-dependent `TransientShaper` (replacing `juce::dsp::IIR::Filter`/`juce::AudioBuffer`/`juce::Decibels` with a hand-rolled RBJ biquad and raw channel pointers), unit-tested via CTest and verified against the JUCE original via a golden-vector capture. `Source/BastosPluginAdapter.{h,cpp}` wires all 13 host parameters and replicates the JUCE-era processBlock()'s dry/wet mix, output gain, and peak metering. `Source/BastosUI.{h,cpp}` has the ported editor (13 rotary knobs across Attack/Sustain/Global groups, 2 VU meters) plus a **new** factory-presets panel (Bastos never had one in JUCE) backed by `Source/FactoryPresets.h`'s 3 presets and `AudioPlugins/Common`'s `PresetBrowser`/`PresetSelector`/`Button`. The JUCE-era `PluginProcessor`/`PluginEditor`/original `TransientShaper` are preserved unchanged under `Source/_juce_reference/` as the porting reference. Rebranded from the legacy `YvanJanet`/`com.yvanjanet.bastos` identity to `Spellbound`/`com.spellbound.bastos`, matching every other migrated plugin. See `docs/superpowers/plans/2026-09-06-maxdps-dpf-migration.md` for the full task-by-task migration record.
 
 ## Build Commands
 
@@ -24,37 +21,31 @@ sudo apt install cmake ninja-build build-essential git \
     libglu1-mesa-dev libwebkit2gtk-4.1-dev
 ```
 
-### Configure
+### Configure / build / run
 
 ```bash
+# Configure (first run fetches DPF + AudioPlugins/Common into build/_deps/)
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+# Build
+cmake --build build --parallel
+
+# Build outputs (DPF layout, under build/bin/ -- no Standalone target:
+# Bastos is an effect, not an instrument)
+#   build/bin/Bastos.vst3/
+#   build/bin/Bastos.clap
+#   build/bin/Bastos.lv2/
+
+# Unit tests (DSP + presets, no DPF/JUCE dependency)
+ctest --test-dir build --output-on-failure
+
+# Install plugins (Linux, dev build)
+cp -r build/bin/Bastos.vst3 ~/.vst3/
+cp    build/bin/Bastos.clap ~/.clap/
+cp -r build/bin/Bastos.lv2  ~/.lv2/
 ```
 
-First run downloads JUCE and clap-juce-extensions into `build/_deps/`.
-
-### Build
-
-```bash
-cmake --build build --parallel          # all targets
-cmake --build build --target Bastos_Standalone
-cmake --build build --target Bastos_VST3
-cmake --build build --target Bastos_CLAP
-```
-
-### Run standalone
-
-```bash
-./build/Bastos_artefacts/Debug/Standalone/Bastos
-```
-
-### Install plugins (Linux, dev build)
-
-```bash
-cp -r build/Bastos_artefacts/Debug/VST3/Bastos.vst3 ~/.vst3/
-cp    build/Bastos_artefacts/Debug/CLAP/Bastos.clap ~/.clap/
-```
-
-### Create shippable tarball
+### Release packaging
 
 ```bash
 cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -68,57 +59,55 @@ cd build-release && cpack
 
 ```
 Source/
-  PluginProcessor.h/.cpp    — AudioProcessor; APVTS definition; routes processBlock()
-                              through BassEnhancer → TransientShaper; measures input/output peak levels
-  PluginEditor.h/.cpp       — AudioProcessorEditor; knobs, bypass toggles, input/output meters; 30 Hz timer
+  DistrhoPluginInfo.h        -- DPF metadata, BastosParameters enum, BASTOS_PARAM_* ranges/defaults
+  BastosPluginAdapter.h/.cpp -- DPF Plugin: parameters, dry/wet mix, output gain, peak metering
+  BastosUI.h/.cpp            -- DPF UI: 13 RotaryKnobs, 2 VuMeters, presets bar
+  FactoryPresets.h           -- 3 hand-authored factory presets
   DSP/
-    BassEnhancer.h/.cpp     — Sub-harmonic generator; respects bass_enabled bypass flag
-    TransientShaper.h/.cpp  — Dual-envelope transient shaper with optional bandpass; respects transient_enabled flag
+    TransientShaperCore.h/.cpp -- framework-free dual-envelope transient designer (unit-tested)
+  _juce_reference/            -- pre-migration JUCE code, preserved as the porting reference
 ```
 
-### Data flow
+### Signal flow
 
 ```
-processBlock()
-  ├─ measure input peak (atomic write)
-  ├─ BassEnhancer::process()        [no-op if bass_enabled == false]
-  │    LP filter @ cutoff → isolate lows
-  │    half-wave rectify → sub-octave content
-  │    bandpass generated content (keep subs only)
-  │    mix back with dry signal (drive + blend)
-  ├─ TransientShaper::process()     [no-op if transient_enabled == false]
-  │    fast envelope follower (~1–5 ms) and slow follower (~50–200 ms)
-  │    transient signal = fast − slow
-  │    if bp_enabled:  bandpass dry @ bp_freq/bp_q → apply gain to band → mix back
-  │    if bp_disabled: apply gain to full signal
-  │    gain is smoothed per-sample (juce::SmoothedValue<float>) to prevent clicks
-  └─ measure output peak (atomic write)
+run()
+  |- measure input peak (MeterTransport)
+  |- copy dry signal (if mix < 1.0)
+  |- TransientShaperCore::process()
+  |    fast envelope follower (~1-5 ms) and slow follower (~50-200 ms)
+  |    transient weight t = (fast - slow) / (fast + slow); atkW = max(0,t); susW = max(0,-t)
+  |    gain / sub-drive / sub-level / upper-drive / upper-level all interpolated from atkW/susW
+  |    sub harmonics:   LP(x, 150 Hz) -> tanh(drive) - dry -> LP(300 Hz) -> blend
+  |    upper harmonics: tanh(x * drive) - x -> blend
+  |- apply output gain
+  |- blend dry signal back in (if mix < 1.0)
+  `- measure output peak (MeterTransport)
 ```
 
-### Parameters (APVTS)
+### Parameters
 
-| ID | Range | Description |
-|----|-------|-------------|
-| `bass_enabled` | bool | bypass the bass enhancer |
-| `drive` | 0–24 dB | harmonic generation drive |
-| `cutoff` | 60–200 Hz | LP cutoff for bass isolation |
-| `blend` | 0–100 % | wet/dry mix of generated sub content |
-| `transient_enabled` | bool | bypass the transient shaper |
-| `attack` | −12 to +12 dB | gain applied during transient onset |
-| `sustain` | −12 to +12 dB | gain applied during transient decay |
-| `speed` | fast/med/slow | envelope time constants |
-| `bp_enabled` | bool | engage bandpass filter for dynamic EQ mode |
-| `bp_freq` | 60–500 Hz | bandpass center frequency |
-| `bp_q` | 0.5–8 | bandpass Q |
-| `output_gain` | −12 to +12 dB | output trim |
-| `mix` | 0–100 % | global dry/wet |
+| Host symbol | Range | Default | Description |
+|---|---|---|---|
+| `atk_gain` | -12 to 12 dB | 0 | gain applied during transient attack |
+| `atk_sub_count` | 1-3 | 1 | sub-harmonic drive multiplier during attack |
+| `atk_sub_level` | 0-1 | 0 | sub-harmonic blend level during attack |
+| `atk_upper_count` | 1-5 | 1 | upper-harmonic drive multiplier during attack |
+| `atk_upper_level` | 0-1 | 0 | upper-harmonic blend level during attack |
+| `sus_gain` | -12 to 12 dB | 0 | gain applied during transient sustain/decay |
+| `sus_sub_count` | 1-3 | 1 | sub-harmonic drive multiplier during sustain |
+| `sus_sub_level` | 0-1 | 0 | sub-harmonic blend level during sustain |
+| `sus_upper_count` | 1-5 | 1 | upper-harmonic drive multiplier during sustain |
+| `sus_upper_level` | 0-1 | 0 | upper-harmonic blend level during sustain |
+| `speed` | 0-1 | 0 | envelope follower speed (fast<->slow time constants) |
+| `output_gain` | -12 to 12 dB | 0 | output trim |
+| `mix` | 0-1 | 1 | global dry/wet |
+
+No bypass parameter exists (there never was one, even pre-migration).
 
 ### Key design constraints
 
-- **In-place processing**: processBlock() modifies the buffer directly; DSP classes allocate their own internal scratch buffers in `prepare()`
-- **Parameter state**: APVTS owns all parameters; `getStateInformation()` / `setStateInformation()` serialize via XML ValueTree
-- **Level meters**: processor writes peak values as `std::atomic<float>` each block; editor's 30 Hz timer reads them (same atomic pattern as MixAdvice's AnalysisResult)
-- **Bypass**: each DSP class returns early in `process()` when its enabled flag is false; flag read from APVTS atomically
-- **Click prevention**: gain modulation in TransientShaper is smoothed per-sample using `juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>` (ramp ~1 ms, initialized in `prepare()`)
-- **Envelope coefficients**: compute alpha from sample rate in `prepare()`, same pattern as MixAdvice's `rmsAlpha_`
-- **Half-wave rectification**: `x = (x > 0.f) ? x : 0.f` on the LP-filtered signal; result is LP-filtered again to extract the sub-octave fundamental before mixing
+- **DSP is framework-free and unit-tested independently of DPF** (`Source/DSP/TransientShaperCore.h/.cpp` + `Tests/test_transientshapercore.cpp`, CTest, verified against the original JUCE implementation via a golden-vector capture) -- `BastosPluginAdapter`/`BastosUI` are thin adapters with no DSP logic of their own.
+- **In-place processing**: `run()` modifies the output buffer directly; `TransientShaperCore` owns no per-block scratch beyond its 2-channel envelope/filter state.
+- **Peak meters are direct-access, not DPF parameters**: `DISTRHO_PLUGIN_WANT_DIRECT_ACCESS` + `getPluginInstancePointer()`, same idiom as every other plugin in this workspace -- clap-validator rejects host-visible, audio-reactive output parameters regardless of hints.
+- **Zero latency**: `TransientShaperCore` has no delay lines; `DISTRHO_PLUGIN_WANT_LATENCY 0`.
