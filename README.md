@@ -1,4 +1,8 @@
-# Bastos
+# Spellbound Havoc
+
+*"Transient Devastation"*
+
+(Project codename: Bastos)
 
 
 

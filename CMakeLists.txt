@@ -130,7 +130,7 @@ install(PROGRAMS   "${CMAKE_CURRENT_SOURCE_DIR}/scripts/install.sh"
 set(CPACK_GENERATOR                 TGZ)
 set(CPACK_PACKAGE_NAME              Bastos)
 set(CPACK_PACKAGE_VENDOR            Spellbound)
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Bass enhancer and transient shaper")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Spellbound Havoc — Transient Devastation")
 set(CPACK_PACKAGE_VERSION           ${PROJECT_VERSION})
 set(CPACK_SYSTEM_NAME               linux-x86_64)
 set(CPACK_PACKAGE_FILE_NAME         "Bastos-${PROJECT_VERSION}-linux-x86_64")
