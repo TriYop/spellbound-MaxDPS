@@ -96,47 +96,79 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
 endif()
 
+option(PACKAGE_DEB "Package as a Debian .deb (FHS /usr paths) instead of a portable relative-path tarball" OFF)
+
+if(PACKAGE_DEB)
+    set(_DEST_VST3 lib/vst3)
+    set(_DEST_CLAP lib/clap)
+    set(_DEST_LV2  lib/lv2)
+else()
+    set(_DEST_VST3 VST3)
+    set(_DEST_CLAP CLAP)
+    set(_DEST_LV2  LV2)
+endif()
+
 set(_BIN "${CMAKE_BINARY_DIR}/bin")
 
 install(DIRECTORY  "${_BIN}/Bastos.vst3"
-        DESTINATION VST3
+        DESTINATION ${_DEST_VST3}
         COMPONENT   Runtime
         USE_SOURCE_PERMISSIONS)
 
 if(APPLE)
     install(DIRECTORY  "${_BIN}/Bastos.clap"
-            DESTINATION CLAP
+            DESTINATION ${_DEST_CLAP}
             COMPONENT   Runtime
             USE_SOURCE_PERMISSIONS)
 else()
     install(FILES      "${_BIN}/Bastos.clap"
-            DESTINATION CLAP
+            DESTINATION ${_DEST_CLAP}
             COMPONENT   Runtime
             PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                         GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 endif()
 
 install(DIRECTORY  "${_BIN}/Bastos.lv2"
-        DESTINATION LV2
+        DESTINATION ${_DEST_LV2}
         COMPONENT   Runtime
         USE_SOURCE_PERMISSIONS)
 
-install(PROGRAMS   "${CMAKE_CURRENT_SOURCE_DIR}/scripts/install.sh"
-                   "${CMAKE_CURRENT_SOURCE_DIR}/scripts/uninstall.sh"
-        DESTINATION .
-        COMPONENT   Runtime)
+if(NOT PACKAGE_DEB)
+    install(PROGRAMS   "${CMAKE_CURRENT_SOURCE_DIR}/scripts/install.sh"
+                       "${CMAKE_CURRENT_SOURCE_DIR}/scripts/uninstall.sh"
+            DESTINATION .
+            COMPONENT   Runtime)
+endif()
 
-# ── CPack (TGZ) ─────────────────────────────────────────────────────────────
-set(CPACK_GENERATOR                 TGZ)
-set(CPACK_PACKAGE_NAME              Bastos)
-set(CPACK_PACKAGE_VENDOR            Spellbound)
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Spellbound Havoc — Transient Devastation")
-set(CPACK_PACKAGE_VERSION           ${PROJECT_VERSION})
-set(CPACK_SYSTEM_NAME               linux-x86_64)
-set(CPACK_PACKAGE_FILE_NAME         "Bastos-${PROJECT_VERSION}-linux-x86_64")
-set(CPACK_PACKAGING_INSTALL_PREFIX  "")
-set(CPACK_STRIP_FILES               TRUE)
-set(CPACK_PACKAGE_CHECKSUM          SHA256)
+if(PACKAGE_DEB)
+    # ── CPack (Debian .deb) ─────────────────────────────────────────────────
+    set(CPACK_GENERATOR                    DEB)
+    set(CPACK_PACKAGE_NAME                 spellbound-bastos)
+    set(CPACK_PACKAGE_VENDOR               spellbound)
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY  "Spellbound Havoc — Transient Devastation")
+    set(CPACK_PACKAGE_VERSION              ${PROJECT_VERSION})
+    set(CPACK_PACKAGING_INSTALL_PREFIX     "/usr")
+    set(CPACK_STRIP_FILES                  TRUE)
+    set(CPACK_PACKAGE_CHECKSUM              SHA256)
+    set(CPACK_PACKAGE_CONTACT              "TriYop <dev@yvanjanet.net>")
+    set(CPACK_DEBIAN_PACKAGE_MAINTAINER    "TriYop <dev@yvanjanet.net>")
+    set(CPACK_DEBIAN_PACKAGE_SECTION       sound)
+    set(CPACK_DEBIAN_PACKAGE_PRIORITY      optional)
+    set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS     TRUE)
+    set(CPACK_DEBIAN_FILE_NAME             DEB-DEFAULT)
+else()
+    # ── CPack (TGZ) ───────────────────────────────────────────────────────────
+    set(CPACK_GENERATOR                 TGZ)
+    set(CPACK_PACKAGE_NAME              Bastos)
+    set(CPACK_PACKAGE_VENDOR            Spellbound)
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Spellbound Havoc — Transient Devastation")
+    set(CPACK_PACKAGE_VERSION           ${PROJECT_VERSION})
+    set(CPACK_SYSTEM_NAME               linux-x86_64)
+    set(CPACK_PACKAGE_FILE_NAME         "Bastos-${PROJECT_VERSION}-linux-x86_64")
+    set(CPACK_PACKAGING_INSTALL_PREFIX  "")
+    set(CPACK_STRIP_FILES               TRUE)
+    set(CPACK_PACKAGE_CHECKSUM          SHA256)
+endif()
 set(CPACK_INSTALL_CMAKE_PROJECTS
     "${CMAKE_BINARY_DIR};${PROJECT_NAME};Runtime;/")
 include(CPack)
