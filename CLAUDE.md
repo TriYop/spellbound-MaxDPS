@@ -53,6 +53,21 @@ cmake --build build-release --parallel
 cd build-release && cpack
 ```
 
+Produces a portable `Bastos-<version>-linux-x86_64.tar.gz` with `install.sh`/`uninstall.sh` for installing VST3/CLAP/LV2 to the user's plugin directories.
+
+### Create a Debian package
+
+```bash
+cmake -B build-deb -G Ninja -DCMAKE_BUILD_TYPE=Release -DPACKAGE_DEB=ON
+cmake --build build-deb --parallel
+cd build-deb && cpack
+```
+
+Produces `spellbound-bastos_<version>_<arch>.deb`, installing to
+`/usr/lib/{vst3,clap,lv2}` via `dpkg`. Requires `dpkg-dev` on the build host
+(provides `dpkg-shlibdeps`, which auto-derives the package's runtime
+`Depends:`). Uninstall with `sudo apt remove spellbound-bastos`.
+
 ## Architecture
 
 ### Source layout
