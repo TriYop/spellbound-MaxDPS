@@ -5,6 +5,15 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# MSVC doesn't expose M_PI (a POSIX extension) from <cmath> unless this is
+# defined before the header is first included. Source/DSP/TransientShaperCore.h
+# uses M_PI directly (BiquadLowpass::setCutoff). Applied at the directory
+# level so it covers every target in this CMakeLists.txt, including the
+# test executables. No-op on GCC/Clang.
+if(MSVC)
+  add_compile_definitions(_USE_MATH_DEFINES)
+endif()
+
 include(FetchContent)
 
 # DPF has no tagged releases -- pin the exact commit SHA Hex/Pugilist/Tank/
