@@ -60,7 +60,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 FetchContent_Declare(AudioPluginsCommon
     GIT_REPOSITORY https://github.com/TriYop/spellbound-common.git
-    GIT_TAG        v0.4.0
+    GIT_TAG        v0.9.2
     GIT_SHALLOW    TRUE
 )
 FetchContent_MakeAvailable(AudioPluginsCommon)
