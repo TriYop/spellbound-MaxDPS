@@ -181,7 +181,7 @@ constexpr ParamIdEntry kParamIds[kNumParamIds] = {
 } // namespace
 
 BastosUI::BastosUI()
-    : UI(DISTRHO_UI_DEFAULT_WIDTH, DISTRHO_UI_DEFAULT_HEIGHT),
+    : UI(DISTRHO_UI_DEFAULT_WIDTH, DISTRHO_UI_DEFAULT_HEIGHT, true),
       pluginPtr_(static_cast<BastosPluginAdapter*>(getPluginInstancePointer())),
       presetBrowser_(bastosFactoryPresets(), bastosUserPresetsDirectory(), "com.spellbound.bastos"),
       presetSelector_(makePresetSelector(*this)),

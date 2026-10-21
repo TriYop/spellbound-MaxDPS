@@ -46,7 +46,7 @@
 #define DISTRHO_PLUGIN_CLAP_FEATURES   "audio-effect", "utility", "transient-shaper"
 
 #define DISTRHO_UI_USE_NANOVG     1
-#define DISTRHO_UI_USER_RESIZABLE 0
+#define DISTRHO_UI_USER_RESIZABLE 1
 #define DISTRHO_UI_DEFAULT_WIDTH  660
 #define DISTRHO_UI_DEFAULT_HEIGHT 484
 #define DISTRHO_UI_FILE_BROWSER   1
