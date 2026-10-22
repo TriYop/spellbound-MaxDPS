@@ -27,6 +27,14 @@
 #define DISTRHO_PLUGIN_WANT_LATENCY    0
 
 /*
+ * One persisted UI state: "zoom" (shared zoom pills, index "0".."3", default
+ * "0" = 100%). Validated with ZoomController::parseState; see ZoomStateHolder in Common.
+ */
+#define DISTRHO_PLUGIN_WANT_STATE      1
+#define DISTRHO_PLUGIN_NUM_STATES      1
+#define DISTRHO_PLUGIN_WANT_FULL_STATE 1  // required for the getState() override (host save of the stored value)
+
+/*
  * Input/Output peak meters are never declared as a host parameter (or DPF
  * State) on any format -- clap-validator fails any host-visible, audio-
  * reactive output parameter regardless of hints (see Hex's CLAUDE.md's

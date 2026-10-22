@@ -33,6 +33,9 @@ FetchContent_Declare(dpf
             COMMAND ${CMAKE_COMMAND}
                    -DPATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/patches/dpf-clap-activate-latency.patch
                    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/apply_patch.cmake
+            COMMAND ${CMAKE_COMMAND}
+                   -DPATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/patches/dpf-lv2-ui-resize.patch
+                   -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/apply_patch.cmake
 )
 FetchContent_MakeAvailable(dpf)
 
@@ -69,7 +72,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 FetchContent_Declare(AudioPluginsCommon
     GIT_REPOSITORY https://github.com/TriYop/spellbound-common.git
-    GIT_TAG        v0.9.2
+    GIT_TAG        v0.12.0
     GIT_SHALLOW    TRUE
 )
 FetchContent_MakeAvailable(AudioPluginsCommon)
@@ -78,7 +81,7 @@ FetchContent_MakeAvailable(AudioPluginsCommon)
 # into a common `Bastos` static lib plus `Bastos-dsp`/`Bastos-ui`; BastosUI.cpp
 # is the only consumer of the widgets/presets and lives in `Bastos-ui`.
 target_link_libraries(Bastos-ui PRIVATE AudioPluginsCommon::hui_dgl AudioPluginsCommon::presets)
-target_link_libraries(Bastos PUBLIC AudioPluginsCommon::io)
+target_link_libraries(Bastos PUBLIC AudioPluginsCommon::io AudioPluginsCommon::hui)  # hui: ZoomController (state validation in the adapter)
 
 # ── Unit tests (no JUCE/DPF dependency) ──────────────────────────────────
 enable_testing()

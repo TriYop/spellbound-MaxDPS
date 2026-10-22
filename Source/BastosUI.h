@@ -7,6 +7,7 @@
 #include "audioplugins/common/hui/dgl/VuMeter.h"
 #include "audioplugins/common/hui/dgl/PresetSelector.h"
 #include "audioplugins/common/hui/dgl/Button.h"
+#include "audioplugins/common/hui/dgl/ZoomPills.h"
 #include "audioplugins/common/presets/PresetBrowser.h"
 
 #include <array>
@@ -40,6 +41,7 @@ protected:
     void parameterChanged(uint32_t index, float value) override;
     void onNanoDisplay() override;
     void uiIdle() override;
+    void stateChanged(const char* key, const char* value) override;
 
     // Called by DPF after the user picks a file (or cancels) in the native
     // save dialog SAVE's onClick opens.
@@ -60,6 +62,9 @@ private:
     // PresetBrowser is not a DGL widget (no UI base-class dependency), so
     // it's a plain member, not heap-owned like the widgets below.
     audioplugins::common::presets::PresetBrowser presetBrowser_;
+    // Declared BEFORE presetSelector_ (constructed first) so an open preset
+    // dropdown draws over the zoom pills.
+    audioplugins::common::hui::dgl::ZoomPills zoomPills_;
     std::unique_ptr<audioplugins::common::hui::dgl::PresetSelector> presetSelector_;
     std::unique_ptr<audioplugins::common::hui::dgl::Button> saveButton_;
     std::unique_ptr<audioplugins::common::hui::dgl::Button> deleteButton_;
