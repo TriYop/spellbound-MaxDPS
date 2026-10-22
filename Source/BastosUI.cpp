@@ -53,6 +53,16 @@ const hui::dgl::PresetSelectorPalette kBastosPresetSelectorPalette = {
     /* rowHighlight     */ {0xaa, 0xaa, 0x66, 0x40},
 };
 
+// Zoom pills: section-bg track/pill with the global (gold) accent as the
+// active pill, matching the preset bar's border colour.
+const hui::dgl::PillSelectorPalette kBastosZoomPalette = {
+    /* track      */ kBg,
+    /* pill       */ kSectionBg,
+    /* activePill */ kGlobAccent,
+    /* text       */ {0xdd, 0xdd, 0xdd, 0xff},
+    /* activeText */ {0x14, 0x14, 0x20, 0xff},
+};
+
 // Layout ported from the JUCE-era resized(): kW=660, kH=460, kKnobSize=72,
 // three ATTACK/SUSTAIN/GLOBAL columns plus a 2-meter strip on the right.
 // kH grows by kPresetBarH (24px) to fit the new preset bar above the
@@ -184,6 +194,8 @@ BastosUI::BastosUI()
     : UI(DISTRHO_UI_DEFAULT_WIDTH, DISTRHO_UI_DEFAULT_HEIGHT, true),
       pluginPtr_(static_cast<BastosPluginAdapter*>(getPluginInstancePointer())),
       presetBrowser_(bastosFactoryPresets(), bastosUserPresetsDirectory(), "com.spellbound.bastos"),
+      zoomPills_(this, kW, kH, kBastosZoomPalette,
+                 [this](const char* key, const char* value) { setState(key, value); }),
       presetSelector_(makePresetSelector(*this)),
       saveButton_(makeButton(*this, "SAVE", kSaveButtonX)),
       deleteButton_(makeButton(*this, "DELETE", kDeleteButtonX))
@@ -242,7 +254,17 @@ BastosUI::BastosUI()
         openFileBrowser(options);
     };
 
+    // Right-aligned in the preset bar, clear of the DELETE button.
+    zoomPills_.place(static_cast<float>(kW) - kMargin, kPresetBarY,
+                     static_cast<float>(kPresetBarRowH),
+                     kDeleteButtonX + static_cast<float>(kPresetButtonW) + 8.0f);
+
     refreshPresetControls();
+}
+
+void BastosUI::stateChanged(const char* key, const char* value)
+{
+    zoomPills_.onStateChanged(key, value);
 }
 
 void BastosUI::uiFileBrowserSelected(const char* filename)
@@ -316,6 +338,8 @@ void BastosUI::setKnobValue(const uint32_t index, const float value)
 
 void BastosUI::uiIdle()
 {
+    zoomPills_.onIdle();
+
     // Direct-access read of the DSP instance's atomically-published peak
     // meters -- see DistrhoPluginInfo.h's DISTRHO_PLUGIN_WANT_DIRECT_ACCESS
     // comment for why this isn't a DPF parameter. pluginPtr_ is confirmed

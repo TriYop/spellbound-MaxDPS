@@ -33,6 +33,9 @@ FetchContent_Declare(dpf
             COMMAND ${CMAKE_COMMAND}
                    -DPATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/patches/dpf-clap-activate-latency.patch
                    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/apply_patch.cmake
+            COMMAND ${CMAKE_COMMAND}
+                   -DPATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/patches/dpf-lv2-ui-resize.patch
+                   -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/apply_patch.cmake
 )
 FetchContent_MakeAvailable(dpf)
 
@@ -78,7 +81,7 @@ FetchContent_MakeAvailable(AudioPluginsCommon)
 # into a common `Bastos` static lib plus `Bastos-dsp`/`Bastos-ui`; BastosUI.cpp
 # is the only consumer of the widgets/presets and lives in `Bastos-ui`.
 target_link_libraries(Bastos-ui PRIVATE AudioPluginsCommon::hui_dgl AudioPluginsCommon::presets)
-target_link_libraries(Bastos PUBLIC AudioPluginsCommon::io)
+target_link_libraries(Bastos PUBLIC AudioPluginsCommon::io AudioPluginsCommon::hui)  # hui: ZoomController (state validation in the adapter)
 
 # ── Unit tests (no JUCE/DPF dependency) ──────────────────────────────────
 enable_testing()
@@ -96,6 +99,12 @@ target_include_directories(test_factorypresets PRIVATE Source/ Tests/)
 target_link_libraries(test_factorypresets PRIVATE AudioPluginsCommon::presets)
 target_compile_features(test_factorypresets PRIVATE cxx_std_20)
 add_test(NAME FactoryPresets COMMAND test_factorypresets)
+
+add_executable(test_zoomstate Tests/test_zoomstate.cpp)
+target_include_directories(test_zoomstate PRIVATE Source/ Tests/)
+target_link_libraries(test_zoomstate PRIVATE AudioPluginsCommon::hui)
+target_compile_features(test_zoomstate PRIVATE cxx_std_20)
+add_test(NAME ZoomState COMMAND test_zoomstate)
 
 # ── Install rules ─────────────────────────────────────────────────────────
 # DPF writes all format outputs under a flat bin/ dir -- no Standalone
