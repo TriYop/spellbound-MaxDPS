@@ -28,7 +28,7 @@
 
 /*
  * One persisted UI state: "zoom" (shared zoom pills, index "0".."3", default
- * "0" = 100%). Validated with ZoomController::parseState; see ZoomStateStore.h.
+ * "0" = 100%). Validated with ZoomController::parseState; see ZoomStateHolder in Common.
  */
 #define DISTRHO_PLUGIN_WANT_STATE      1
 #define DISTRHO_PLUGIN_NUM_STATES      1

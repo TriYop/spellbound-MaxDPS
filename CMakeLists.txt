@@ -100,12 +100,6 @@ target_link_libraries(test_factorypresets PRIVATE AudioPluginsCommon::presets)
 target_compile_features(test_factorypresets PRIVATE cxx_std_20)
 add_test(NAME FactoryPresets COMMAND test_factorypresets)
 
-add_executable(test_zoomstate Tests/test_zoomstate.cpp)
-target_include_directories(test_zoomstate PRIVATE Source/ Tests/)
-target_link_libraries(test_zoomstate PRIVATE AudioPluginsCommon::hui)
-target_compile_features(test_zoomstate PRIVATE cxx_std_20)
-add_test(NAME ZoomState COMMAND test_zoomstate)
-
 # ── Install rules ─────────────────────────────────────────────────────────
 # DPF writes all format outputs under a flat bin/ dir -- no Standalone
 # target: Bastos is an effect, and this workspace only requires Standalone

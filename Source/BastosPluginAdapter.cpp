@@ -39,15 +39,15 @@ void BastosPluginAdapter::initState(const uint32_t index, State& state)
 
 String BastosPluginAdapter::getState(const char* key) const
 {
-    if (std::strcmp(key, "zoom") == 0)
-        return String(zoomState_.get());
+    if (key != nullptr && std::strcmp(key, "zoom") == 0)
+        return String(zoomState_.text().c_str());
     return String();
 }
 
 void BastosPluginAdapter::setState(const char* key, const char* value)
 {
-    if (std::strcmp(key, "zoom") == 0)
-        zoomState_.set(value); // junk ignored
+    if (key != nullptr && std::strcmp(key, "zoom") == 0)
+        zoomState_.set(value); // junk/null ignored
 }
 
 void BastosPluginAdapter::initParameter(const uint32_t index, Parameter& parameter)
