@@ -2,6 +2,7 @@
 
 #include "DistrhoPlugin.hpp"
 #include "DSP/TransientShaperCore.h"
+#include "ZoomStateStore.h"
 #include "audioplugins/common/io/MeterTransport.h"
 
 #include <vector>
@@ -40,6 +41,10 @@ protected:
     // -- Init -------------------------------------------------------------
     void initParameter(uint32_t index, Parameter& parameter) override;
 
+    void initState(uint32_t index, State& state) override;
+    String getState(const char* key) const override;
+    void setState(const char* key, const char* value) override;
+
     // -- Internal data ------------------------------------------------------
     float getParameterValue(uint32_t index) const override;
     void setParameterValue(uint32_t index, float value) override;
@@ -73,6 +78,7 @@ private:
     float mix_             = BASTOS_PARAM_MIX_DEFAULT;
 
     TransientShaperCore shaper_;
+    ZoomStateStore zoomState_;
 
     // Scratch dry-signal buffers for the mix knob, resized (never allocated
     // in run() itself) in activate()/bufferSizeChanged() to stay RT-safe.

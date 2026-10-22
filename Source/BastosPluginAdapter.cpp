@@ -11,7 +11,7 @@ float dbToGain(float db) noexcept { return std::pow(10.f, db / 20.f); }
 }
 
 BastosPluginAdapter::BastosPluginAdapter()
-    : Plugin(kParameterCount, 0, 0) // 13 parameters, 0 programs, 0 states -- meters are direct-access only
+    : Plugin(kParameterCount, 0, 1) // 13 parameters, 0 programs, 1 state ("zoom") -- meters are direct-access only
 {
 }
 
@@ -27,6 +27,28 @@ const char* BastosPluginAdapter::getLicense() const
 }
 
 uint32_t BastosPluginAdapter::getVersion() const { return d_version(0, 1, 0); }
+
+void BastosPluginAdapter::initState(const uint32_t index, State& state)
+{
+    if (index != 0)
+        return;
+    state.key = "zoom";
+    state.label = "Zoom";
+    state.defaultValue = "0";
+}
+
+String BastosPluginAdapter::getState(const char* key) const
+{
+    if (std::strcmp(key, "zoom") == 0)
+        return String(zoomState_.get());
+    return String();
+}
+
+void BastosPluginAdapter::setState(const char* key, const char* value)
+{
+    if (std::strcmp(key, "zoom") == 0)
+        zoomState_.set(value); // junk ignored
+}
 
 void BastosPluginAdapter::initParameter(const uint32_t index, Parameter& parameter)
 {
