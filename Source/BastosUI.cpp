@@ -16,10 +16,14 @@ DGL_NAMESPACE::Color toDglColor(const hui::Colour& c) noexcept
                                  static_cast<int>(c.b), static_cast<float>(c.a) / 255.f);
 }
 
-// Palette ported from Source/_juce_reference/PluginEditor.cpp's kAtkAccent/
-// kSusAccent/kGlobAccent (blue/teal/gold), reused as knob accent colors.
-constexpr hui::Colour kBg        { 0x14, 0x14, 0x20, 0xff };
-constexpr hui::Colour kSectionBg { 0x1e, 0x1e, 0x30, 0xff };
+// Chrome (background, panels, buttons, selector, pills) comes from the shared
+// hardware Theme / widget defaults. Only the per-section knob accents below
+// are plugin-specific (blue attack / teal sustain / gold global, from the
+// JUCE-era kAtkAccent/kSusAccent/kGlobAccent); they tint the knob cap/arc
+// only, the ring and ticks keep the theme defaults.
+const hui::Theme kTheme = hui::defaultTheme();
+const hui::Colour kBg        = kTheme.windowBackground;
+const hui::Colour kSectionBg = kTheme.widgetBackground;
 constexpr hui::Colour kAtkAccent { 0x44, 0xaa, 0xee, 0xff };
 constexpr hui::Colour kSusAccent { 0x44, 0xdd, 0xaa, 0xff };
 constexpr hui::Colour kGlobAccent{ 0xaa, 0xaa, 0x66, 0xff };
@@ -29,39 +33,8 @@ hui::dgl::RotaryKnobPalette paletteFor(const hui::Colour& accent)
     hui::dgl::RotaryKnobPalette p;
     p.valueArc = accent;
     p.valueArcGlow = accent;
-    p.knobRim = accent;
     return p;
 }
-
-// Button/PresetSelector palettes: same section-bg/accent tones as the
-// knobs, since both palette structs are deliberately generic (see Common's
-// Button.h/PresetSelector.h) -- same convention as Hex's HexUI.cpp.
-const hui::dgl::ButtonPalette kBastosButtonPalette = {
-    /* background         */ kSectionBg,
-    /* backgroundDisabled */ kBg,
-    /* border             */ kGlobAccent,
-    /* text               */ {0xdd, 0xdd, 0xdd, 0xff},
-    /* textDisabled       */ {0x66, 0x66, 0x66, 0xff},
-};
-
-const hui::dgl::PresetSelectorPalette kBastosPresetSelectorPalette = {
-    /* closedBackground */ kSectionBg,
-    /* listBackground   */ kBg,
-    /* border           */ kGlobAccent,
-    /* text             */ {0xdd, 0xdd, 0xdd, 0xff},
-    /* textFactory      */ {0xaa, 0xaa, 0xaa, 0xff},
-    /* rowHighlight     */ {0xaa, 0xaa, 0x66, 0x40},
-};
-
-// Zoom pills: section-bg track/pill with the global (gold) accent as the
-// active pill, matching the preset bar's border colour.
-const hui::dgl::PillSelectorPalette kBastosZoomPalette = {
-    /* track      */ kBg,
-    /* pill       */ kSectionBg,
-    /* activePill */ kGlobAccent,
-    /* text       */ {0xdd, 0xdd, 0xdd, 0xff},
-    /* activeText */ {0x14, 0x14, 0x20, 0xff},
-};
 
 // Layout ported from the JUCE-era resized(): kW=660, kH=460, kKnobSize=72,
 // three ATTACK/SUSTAIN/GLOBAL columns plus a 2-meter strip on the right.
@@ -138,7 +111,6 @@ std::unique_ptr<hui::dgl::RotaryKnob> makeKnob(BastosUI& ui, const KnobSpec& spe
 std::unique_ptr<hui::dgl::PresetSelector> makePresetSelector(BastosUI& ui)
 {
     std::unique_ptr<hui::dgl::PresetSelector> selector(new hui::dgl::PresetSelector(&ui));
-    selector->setPalette(kBastosPresetSelectorPalette);
     selector->setClosedSize(kPresetSelectorW, kPresetBarRowH);
     selector->setAbsolutePos(static_cast<int>(kPresetBarX), static_cast<int>(kPresetBarY));
     return selector;
@@ -147,7 +119,6 @@ std::unique_ptr<hui::dgl::PresetSelector> makePresetSelector(BastosUI& ui)
 std::unique_ptr<hui::dgl::Button> makeButton(BastosUI& ui, const char* label, float x)
 {
     std::unique_ptr<hui::dgl::Button> button(new hui::dgl::Button(&ui));
-    button->setPalette(kBastosButtonPalette);
     button->setLabel(label);
     button->setSize(kPresetButtonW, kPresetBarRowH);
     button->setAbsolutePos(static_cast<int>(x), static_cast<int>(kPresetBarY));
@@ -194,7 +165,7 @@ BastosUI::BastosUI()
     : UI(DISTRHO_UI_DEFAULT_WIDTH, DISTRHO_UI_DEFAULT_HEIGHT, true),
       pluginPtr_(static_cast<BastosPluginAdapter*>(getPluginInstancePointer())),
       presetBrowser_(bastosFactoryPresets(), bastosUserPresetsDirectory(), "com.spellbound.bastos"),
-      zoomPills_(this, kW, kH, kBastosZoomPalette,
+      zoomPills_(this, kW, kH, hui::dgl::PillSelectorPalette{},
                  [this](const char* key, const char* value) { setState(key, value); }),
       presetSelector_(makePresetSelector(*this)),
       saveButton_(makeButton(*this, "SAVE", kSaveButtonX)),
