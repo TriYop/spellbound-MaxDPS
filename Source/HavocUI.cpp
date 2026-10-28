@@ -103,8 +103,8 @@ std::string havocUserPresetsDirectory()
 {
     const char* home = std::getenv("HOME");
     if (home == nullptr)
-        return "/tmp/Bastos/presets"; // extremely unlikely fallback, still functional
-    return std::string(home) + "/.config/Bastos/presets";
+        return "/tmp/Havoc/presets"; // extremely unlikely fallback, still functional
+    return std::string(home) + "/.config/Havoc/presets";
 }
 
 } // namespace
@@ -118,7 +118,7 @@ HavocUI::HavocUI()
       master_(this, /*withFader=*/true),
       fader_(master_.fader()),
       pluginPtr_(static_cast<HavocPluginAdapter*>(getPluginInstancePointer())),
-      presetBrowser_(havocFactoryPresets(), havocUserPresetsDirectory(), "com.spellbound.bastos"),
+      presetBrowser_(havocFactoryPresets(), havocUserPresetsDirectory(), "com.spellbound.havoc"),
       header_(this, "SPELLBOUND HAVOC", DISTRHO_UI_DEFAULT_WIDTH, DISTRHO_UI_DEFAULT_HEIGHT,
               [this](const char* key, const char* value) { setState(key, value); })
 {

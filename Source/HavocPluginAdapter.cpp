@@ -15,15 +15,15 @@ HavocPluginAdapter::HavocPluginAdapter()
 {
 }
 
-const char* HavocPluginAdapter::getLabel() const { return "Bastos"; }
-const char* HavocPluginAdapter::getDescription() const { return "Bass enhancer and transient shaper"; }
+const char* HavocPluginAdapter::getLabel() const { return "Havoc"; }
+const char* HavocPluginAdapter::getDescription() const { return "Transient Devastation - bass enhancer and transient shaper"; }
 const char* HavocPluginAdapter::getMaker() const { return "Spellbound"; }
 
 const char* HavocPluginAdapter::getLicense() const
 {
     // Must be a URI -- lv2lint's Plugin License test fails a plain word
     // like "Proprietary" (confirmed against Hex/Tank/Outflank).
-    return "https://spellbound.audio/plugins/bastos#license";
+    return "https://spellbound.audio/plugins/havoc#license";
 }
 
 uint32_t HavocPluginAdapter::getVersion() const { return d_version(0, 1, 0); }

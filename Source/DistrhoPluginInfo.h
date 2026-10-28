@@ -11,12 +11,13 @@
 #define DISTRHO_PLUGIN_INFO_H_INCLUDED
 
 #define DISTRHO_PLUGIN_BRAND   "Spellbound"
-#define DISTRHO_PLUGIN_NAME    "Bastos"
-#define DISTRHO_PLUGIN_URI     "https://spellbound.audio/plugins/bastos"
-#define DISTRHO_PLUGIN_CLAP_ID "com.spellbound.bastos"
+#define DISTRHO_PLUGIN_NAME    "Havoc"
+#define DISTRHO_PLUGIN_URI     "https://spellbound.audio/plugins/havoc"
+#define DISTRHO_PLUGIN_CLAP_ID "com.spellbound.havoc"
+#define DISTRHO_PLUGIN_DESCRIPTION "Transient Devastation - bass enhancer and transient shaper"
 
 #define DISTRHO_PLUGIN_BRAND_ID  Spbd
-#define DISTRHO_PLUGIN_UNIQUE_ID Bsts
+#define DISTRHO_PLUGIN_UNIQUE_ID Hvoc
 
 #define DISTRHO_PLUGIN_HAS_UI      1
 #define DISTRHO_PLUGIN_IS_RT_SAFE  1

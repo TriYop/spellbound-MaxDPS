@@ -8,7 +8,7 @@ int main()
 
     for (const auto& p : presets)
     {
-        CHECK(p.pluginId == "com.spellbound.bastos");
+        CHECK(p.pluginId == "com.spellbound.havoc");
         CHECK(p.parameters.size() == 13);   // all 13 HAVOC_PARAM_* ids present
     }
 

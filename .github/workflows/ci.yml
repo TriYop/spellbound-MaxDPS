@@ -76,7 +76,7 @@ jobs:
       - name: Validate VST3 with pluginval
         if: runner.os == 'Linux'
         run: |
-          xvfb-run -a ./pluginval --strictness-level 5 --validate build/bin/Bastos.vst3
+          xvfb-run -a ./pluginval --strictness-level 5 --validate build/bin/Havoc.vst3
 
       - name: Download clap-validator
         if: runner.os == 'Linux'
@@ -90,7 +90,7 @@ jobs:
       - name: Validate CLAP with clap-validator
         if: runner.os == 'Linux'
         run: |
-          xvfb-run -a ./clap-validator validate build/bin/Bastos.clap
+          xvfb-run -a ./clap-validator validate build/bin/Havoc.clap
 
       - name: Install lv2lint build dependencies
         if: runner.os == 'Linux'
@@ -118,4 +118,4 @@ jobs:
         run: |
           export LV2_PATH="/usr/lib/lv2:${GITHUB_WORKSPACE}/build/bin"
           export LD_PRELOAD="/tmp/lv2lint/build/lv2lint.so"
-          /tmp/lv2lint/build/lv2lint.bin -s lv2_generate_ttl "https://spellbound.audio/plugins/bastos"
+          /tmp/lv2lint/build/lv2lint.bin -s lv2_generate_ttl "https://spellbound.audio/plugins/havoc"
