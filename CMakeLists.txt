@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Bastos VERSION 0.1.0)
+project(Havoc VERSION 0.1.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -39,23 +39,23 @@ FetchContent_Declare(dpf
 )
 FetchContent_MakeAvailable(dpf)
 
-set(BASTOS_DPF_TARGETS vst3 clap lv2)
+set(HAVOC_DPF_TARGETS vst3 clap lv2)
 if(APPLE)
-    list(APPEND BASTOS_DPF_TARGETS au)
+    list(APPEND HAVOC_DPF_TARGETS au)
 endif()
 
-dpf_add_plugin(Bastos
-    TARGETS ${BASTOS_DPF_TARGETS}
+dpf_add_plugin(Havoc
+    TARGETS ${HAVOC_DPF_TARGETS}
     UI_TYPE opengl
     USE_FILE_BROWSER TRUE
     FILES_DSP
-        Source/BastosPluginAdapter.cpp
+        Source/HavocPluginAdapter.cpp
         Source/DSP/TransientShaperCore.cpp
     FILES_UI
-        Source/BastosUI.cpp
+        Source/HavocUI.cpp
 )
 
-target_include_directories(Bastos PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Source")
+target_include_directories(Havoc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Source")
 
 # DPF's dpf_add_plugin() unconditionally compiles a WebViewImpl.cpp that uses
 # the GNU `typeof` extension and fails under strict ISO C++ -- same workaround
@@ -65,23 +65,23 @@ if(TARGET dgl-opengl)
 endif()
 
 # ── Shared HUI library ────────────────────────────────────────────────────
-# ORDERING (load-bearing): must come after dpf_add_plugin(Bastos ...), which
+# ORDERING (load-bearing): must come after dpf_add_plugin(Havoc ...), which
 # is what lazily creates DPF's dgl-opengl target that AudioPluginsCommon::
 # hui_dgl is guarded on.
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 FetchContent_Declare(AudioPluginsCommon
     GIT_REPOSITORY https://github.com/TriYop/spellbound-common.git
-    GIT_TAG        v0.12.0
+    GIT_TAG        v0.16.0
     GIT_SHALLOW    TRUE
 )
 FetchContent_MakeAvailable(AudioPluginsCommon)
 
-# Linked into `Bastos-ui` (not `Bastos`): dpf_add_plugin() splits the plugin
-# into a common `Bastos` static lib plus `Bastos-dsp`/`Bastos-ui`; BastosUI.cpp
-# is the only consumer of the widgets/presets and lives in `Bastos-ui`.
-target_link_libraries(Bastos-ui PRIVATE AudioPluginsCommon::hui_dgl AudioPluginsCommon::presets)
-target_link_libraries(Bastos PUBLIC AudioPluginsCommon::io AudioPluginsCommon::hui)  # hui: ZoomController (state validation in the adapter)
+# Linked into `Havoc-ui` (not `Havoc`): dpf_add_plugin() splits the plugin
+# into a common `Havoc` static lib plus `Havoc-dsp`/`Havoc-ui`; HavocUI.cpp
+# is the only consumer of the widgets/presets and lives in `Havoc-ui`.
+target_link_libraries(Havoc-ui PRIVATE AudioPluginsCommon::hui_dgl AudioPluginsCommon::presets)
+target_link_libraries(Havoc PUBLIC AudioPluginsCommon::io AudioPluginsCommon::hui)  # hui: ZoomController (state validation in the adapter)
 
 # ── Unit tests (no JUCE/DPF dependency) ──────────────────────────────────
 enable_testing()
@@ -100,9 +100,15 @@ target_link_libraries(test_factorypresets PRIVATE AudioPluginsCommon::presets)
 target_compile_features(test_factorypresets PRIVATE cxx_std_20)
 add_test(NAME FactoryPresets COMMAND test_factorypresets)
 
+add_executable(test_havoclayout Tests/test_havoclayout.cpp)
+target_include_directories(test_havoclayout PRIVATE Source/ Tests/)
+target_link_libraries(test_havoclayout PRIVATE AudioPluginsCommon::hui)
+target_compile_features(test_havoclayout PRIVATE cxx_std_20)
+add_test(NAME HavocLayout COMMAND test_havoclayout)
+
 # ── Install rules ─────────────────────────────────────────────────────────
 # DPF writes all format outputs under a flat bin/ dir -- no Standalone
-# target: Bastos is an effect, and this workspace only requires Standalone
+# target: Havoc is an effect, and this workspace only requires Standalone
 # for instruments.
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
@@ -122,25 +128,25 @@ endif()
 
 set(_BIN "${CMAKE_BINARY_DIR}/bin")
 
-install(DIRECTORY  "${_BIN}/Bastos.vst3"
+install(DIRECTORY  "${_BIN}/Havoc.vst3"
         DESTINATION ${_DEST_VST3}
         COMPONENT   Runtime
         USE_SOURCE_PERMISSIONS)
 
 if(APPLE)
-    install(DIRECTORY  "${_BIN}/Bastos.clap"
+    install(DIRECTORY  "${_BIN}/Havoc.clap"
             DESTINATION ${_DEST_CLAP}
             COMPONENT   Runtime
             USE_SOURCE_PERMISSIONS)
 else()
-    install(FILES      "${_BIN}/Bastos.clap"
+    install(FILES      "${_BIN}/Havoc.clap"
             DESTINATION ${_DEST_CLAP}
             COMPONENT   Runtime
             PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                         GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 endif()
 
-install(DIRECTORY  "${_BIN}/Bastos.lv2"
+install(DIRECTORY  "${_BIN}/Havoc.lv2"
         DESTINATION ${_DEST_LV2}
         COMPONENT   Runtime
         USE_SOURCE_PERMISSIONS)
@@ -155,7 +161,7 @@ endif()
 if(PACKAGE_DEB)
     # ── CPack (Debian .deb) ─────────────────────────────────────────────────
     set(CPACK_GENERATOR                    DEB)
-    set(CPACK_PACKAGE_NAME                 spellbound-bastos)
+    set(CPACK_PACKAGE_NAME                 spellbound-havoc)
     set(CPACK_PACKAGE_VENDOR               spellbound)
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY  "Spellbound Havoc — Transient Devastation")
     set(CPACK_PACKAGE_VERSION              ${PROJECT_VERSION})
@@ -171,12 +177,12 @@ if(PACKAGE_DEB)
 else()
     # ── CPack (TGZ) ───────────────────────────────────────────────────────────
     set(CPACK_GENERATOR                 TGZ)
-    set(CPACK_PACKAGE_NAME              Bastos)
+    set(CPACK_PACKAGE_NAME              Havoc)
     set(CPACK_PACKAGE_VENDOR            Spellbound)
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Spellbound Havoc — Transient Devastation")
     set(CPACK_PACKAGE_VERSION           ${PROJECT_VERSION})
     set(CPACK_SYSTEM_NAME               linux-x86_64)
-    set(CPACK_PACKAGE_FILE_NAME         "Bastos-${PROJECT_VERSION}-linux-x86_64")
+    set(CPACK_PACKAGE_FILE_NAME         "Havoc-${PROJECT_VERSION}-linux-x86_64")
     set(CPACK_PACKAGING_INSTALL_PREFIX  "")
     set(CPACK_STRIP_FILES               TRUE)
     set(CPACK_PACKAGE_CHECKSUM          SHA256)

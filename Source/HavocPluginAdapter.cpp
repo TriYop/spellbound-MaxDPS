@@ -1,4 +1,4 @@
-#include "BastosPluginAdapter.h"
+#include "HavocPluginAdapter.h"
 
 #include <algorithm>
 #include <cmath>
@@ -10,25 +10,25 @@ namespace {
 float dbToGain(float db) noexcept { return std::pow(10.f, db / 20.f); }
 }
 
-BastosPluginAdapter::BastosPluginAdapter()
+HavocPluginAdapter::HavocPluginAdapter()
     : Plugin(kParameterCount, 0, 1) // 13 parameters, 0 programs, 1 state ("zoom") -- meters are direct-access only
 {
 }
 
-const char* BastosPluginAdapter::getLabel() const { return "Bastos"; }
-const char* BastosPluginAdapter::getDescription() const { return "Bass enhancer and transient shaper"; }
-const char* BastosPluginAdapter::getMaker() const { return "Spellbound"; }
+const char* HavocPluginAdapter::getLabel() const { return "Havoc"; }
+const char* HavocPluginAdapter::getDescription() const { return "Transient Devastation - bass enhancer and transient shaper"; }
+const char* HavocPluginAdapter::getMaker() const { return "Spellbound"; }
 
-const char* BastosPluginAdapter::getLicense() const
+const char* HavocPluginAdapter::getLicense() const
 {
     // Must be a URI -- lv2lint's Plugin License test fails a plain word
     // like "Proprietary" (confirmed against Hex/Tank/Outflank).
-    return "https://spellbound.audio/plugins/bastos#license";
+    return "https://spellbound.audio/plugins/havoc#license";
 }
 
-uint32_t BastosPluginAdapter::getVersion() const { return d_version(0, 1, 0); }
+uint32_t HavocPluginAdapter::getVersion() const { return d_version(0, 1, 0); }
 
-void BastosPluginAdapter::initState(const uint32_t index, State& state)
+void HavocPluginAdapter::initState(const uint32_t index, State& state)
 {
     if (index != 0)
         return;
@@ -37,120 +37,120 @@ void BastosPluginAdapter::initState(const uint32_t index, State& state)
     state.defaultValue = "0";
 }
 
-String BastosPluginAdapter::getState(const char* key) const
+String HavocPluginAdapter::getState(const char* key) const
 {
     if (key != nullptr && std::strcmp(key, audioplugins::common::hui::ZoomState::kStateKey) == 0)
         return String(zoomState_.text().c_str());
     return String();
 }
 
-void BastosPluginAdapter::setState(const char* key, const char* value)
+void HavocPluginAdapter::setState(const char* key, const char* value)
 {
     if (key != nullptr && std::strcmp(key, audioplugins::common::hui::ZoomState::kStateKey) == 0)
         zoomState_.set(value); // junk/null ignored
 }
 
-void BastosPluginAdapter::initParameter(const uint32_t index, Parameter& parameter)
+void HavocPluginAdapter::initParameter(const uint32_t index, Parameter& parameter)
 {
     switch (index)
     {
     case kParameterAtkGain:
         parameter.hints = kParameterIsAutomatable;
         parameter.name = "Attack Gain"; parameter.symbol = "atk_gain"; parameter.unit = "dB";
-        parameter.ranges.def = BASTOS_PARAM_ATK_GAIN_DEFAULT;
-        parameter.ranges.min = BASTOS_PARAM_ATK_GAIN_MIN;
-        parameter.ranges.max = BASTOS_PARAM_ATK_GAIN_MAX;
+        parameter.ranges.def = HAVOC_PARAM_ATK_GAIN_DEFAULT;
+        parameter.ranges.min = HAVOC_PARAM_ATK_GAIN_MIN;
+        parameter.ranges.max = HAVOC_PARAM_ATK_GAIN_MAX;
         break;
     case kParameterAtkSubCount:
         parameter.hints = kParameterIsAutomatable | kParameterIsInteger;
         parameter.name = "Attack Sub Count"; parameter.symbol = "atk_sub_count";
-        parameter.ranges.def = BASTOS_PARAM_ATK_SUB_COUNT_DEFAULT;
-        parameter.ranges.min = BASTOS_PARAM_ATK_SUB_COUNT_MIN;
-        parameter.ranges.max = BASTOS_PARAM_ATK_SUB_COUNT_MAX;
+        parameter.ranges.def = HAVOC_PARAM_ATK_SUB_COUNT_DEFAULT;
+        parameter.ranges.min = HAVOC_PARAM_ATK_SUB_COUNT_MIN;
+        parameter.ranges.max = HAVOC_PARAM_ATK_SUB_COUNT_MAX;
         break;
     case kParameterAtkSubLevel:
         parameter.hints = kParameterIsAutomatable;
         parameter.name = "Attack Sub Level"; parameter.symbol = "atk_sub_level";
-        parameter.ranges.def = BASTOS_PARAM_ATK_SUB_LEVEL_DEFAULT;
-        parameter.ranges.min = BASTOS_PARAM_ATK_SUB_LEVEL_MIN;
-        parameter.ranges.max = BASTOS_PARAM_ATK_SUB_LEVEL_MAX;
+        parameter.ranges.def = HAVOC_PARAM_ATK_SUB_LEVEL_DEFAULT;
+        parameter.ranges.min = HAVOC_PARAM_ATK_SUB_LEVEL_MIN;
+        parameter.ranges.max = HAVOC_PARAM_ATK_SUB_LEVEL_MAX;
         break;
     case kParameterAtkUpperCount:
         parameter.hints = kParameterIsAutomatable | kParameterIsInteger;
         parameter.name = "Attack Upper Count"; parameter.symbol = "atk_upper_count";
-        parameter.ranges.def = BASTOS_PARAM_ATK_UPPER_COUNT_DEFAULT;
-        parameter.ranges.min = BASTOS_PARAM_ATK_UPPER_COUNT_MIN;
-        parameter.ranges.max = BASTOS_PARAM_ATK_UPPER_COUNT_MAX;
+        parameter.ranges.def = HAVOC_PARAM_ATK_UPPER_COUNT_DEFAULT;
+        parameter.ranges.min = HAVOC_PARAM_ATK_UPPER_COUNT_MIN;
+        parameter.ranges.max = HAVOC_PARAM_ATK_UPPER_COUNT_MAX;
         break;
     case kParameterAtkUpperLevel:
         parameter.hints = kParameterIsAutomatable;
         parameter.name = "Attack Upper Level"; parameter.symbol = "atk_upper_level";
-        parameter.ranges.def = BASTOS_PARAM_ATK_UPPER_LEVEL_DEFAULT;
-        parameter.ranges.min = BASTOS_PARAM_ATK_UPPER_LEVEL_MIN;
-        parameter.ranges.max = BASTOS_PARAM_ATK_UPPER_LEVEL_MAX;
+        parameter.ranges.def = HAVOC_PARAM_ATK_UPPER_LEVEL_DEFAULT;
+        parameter.ranges.min = HAVOC_PARAM_ATK_UPPER_LEVEL_MIN;
+        parameter.ranges.max = HAVOC_PARAM_ATK_UPPER_LEVEL_MAX;
         break;
     case kParameterSusGain:
         parameter.hints = kParameterIsAutomatable;
         parameter.name = "Sustain Gain"; parameter.symbol = "sus_gain"; parameter.unit = "dB";
-        parameter.ranges.def = BASTOS_PARAM_SUS_GAIN_DEFAULT;
-        parameter.ranges.min = BASTOS_PARAM_SUS_GAIN_MIN;
-        parameter.ranges.max = BASTOS_PARAM_SUS_GAIN_MAX;
+        parameter.ranges.def = HAVOC_PARAM_SUS_GAIN_DEFAULT;
+        parameter.ranges.min = HAVOC_PARAM_SUS_GAIN_MIN;
+        parameter.ranges.max = HAVOC_PARAM_SUS_GAIN_MAX;
         break;
     case kParameterSusSubCount:
         parameter.hints = kParameterIsAutomatable | kParameterIsInteger;
         parameter.name = "Sustain Sub Count"; parameter.symbol = "sus_sub_count";
-        parameter.ranges.def = BASTOS_PARAM_SUS_SUB_COUNT_DEFAULT;
-        parameter.ranges.min = BASTOS_PARAM_SUS_SUB_COUNT_MIN;
-        parameter.ranges.max = BASTOS_PARAM_SUS_SUB_COUNT_MAX;
+        parameter.ranges.def = HAVOC_PARAM_SUS_SUB_COUNT_DEFAULT;
+        parameter.ranges.min = HAVOC_PARAM_SUS_SUB_COUNT_MIN;
+        parameter.ranges.max = HAVOC_PARAM_SUS_SUB_COUNT_MAX;
         break;
     case kParameterSusSubLevel:
         parameter.hints = kParameterIsAutomatable;
         parameter.name = "Sustain Sub Level"; parameter.symbol = "sus_sub_level";
-        parameter.ranges.def = BASTOS_PARAM_SUS_SUB_LEVEL_DEFAULT;
-        parameter.ranges.min = BASTOS_PARAM_SUS_SUB_LEVEL_MIN;
-        parameter.ranges.max = BASTOS_PARAM_SUS_SUB_LEVEL_MAX;
+        parameter.ranges.def = HAVOC_PARAM_SUS_SUB_LEVEL_DEFAULT;
+        parameter.ranges.min = HAVOC_PARAM_SUS_SUB_LEVEL_MIN;
+        parameter.ranges.max = HAVOC_PARAM_SUS_SUB_LEVEL_MAX;
         break;
     case kParameterSusUpperCount:
         parameter.hints = kParameterIsAutomatable | kParameterIsInteger;
         parameter.name = "Sustain Upper Count"; parameter.symbol = "sus_upper_count";
-        parameter.ranges.def = BASTOS_PARAM_SUS_UPPER_COUNT_DEFAULT;
-        parameter.ranges.min = BASTOS_PARAM_SUS_UPPER_COUNT_MIN;
-        parameter.ranges.max = BASTOS_PARAM_SUS_UPPER_COUNT_MAX;
+        parameter.ranges.def = HAVOC_PARAM_SUS_UPPER_COUNT_DEFAULT;
+        parameter.ranges.min = HAVOC_PARAM_SUS_UPPER_COUNT_MIN;
+        parameter.ranges.max = HAVOC_PARAM_SUS_UPPER_COUNT_MAX;
         break;
     case kParameterSusUpperLevel:
         parameter.hints = kParameterIsAutomatable;
         parameter.name = "Sustain Upper Level"; parameter.symbol = "sus_upper_level";
-        parameter.ranges.def = BASTOS_PARAM_SUS_UPPER_LEVEL_DEFAULT;
-        parameter.ranges.min = BASTOS_PARAM_SUS_UPPER_LEVEL_MIN;
-        parameter.ranges.max = BASTOS_PARAM_SUS_UPPER_LEVEL_MAX;
+        parameter.ranges.def = HAVOC_PARAM_SUS_UPPER_LEVEL_DEFAULT;
+        parameter.ranges.min = HAVOC_PARAM_SUS_UPPER_LEVEL_MIN;
+        parameter.ranges.max = HAVOC_PARAM_SUS_UPPER_LEVEL_MAX;
         break;
     case kParameterSpeed:
         parameter.hints = kParameterIsAutomatable;
         parameter.name = "Speed"; parameter.symbol = "speed";
-        parameter.ranges.def = BASTOS_PARAM_SPEED_DEFAULT;
-        parameter.ranges.min = BASTOS_PARAM_SPEED_MIN;
-        parameter.ranges.max = BASTOS_PARAM_SPEED_MAX;
+        parameter.ranges.def = HAVOC_PARAM_SPEED_DEFAULT;
+        parameter.ranges.min = HAVOC_PARAM_SPEED_MIN;
+        parameter.ranges.max = HAVOC_PARAM_SPEED_MAX;
         break;
     case kParameterOutputGain:
         parameter.hints = kParameterIsAutomatable;
         parameter.name = "Output Gain"; parameter.symbol = "output_gain"; parameter.unit = "dB";
-        parameter.ranges.def = BASTOS_PARAM_OUTPUT_GAIN_DEFAULT;
-        parameter.ranges.min = BASTOS_PARAM_OUTPUT_GAIN_MIN;
-        parameter.ranges.max = BASTOS_PARAM_OUTPUT_GAIN_MAX;
+        parameter.ranges.def = HAVOC_PARAM_OUTPUT_GAIN_DEFAULT;
+        parameter.ranges.min = HAVOC_PARAM_OUTPUT_GAIN_MIN;
+        parameter.ranges.max = HAVOC_PARAM_OUTPUT_GAIN_MAX;
         break;
     case kParameterMix:
         parameter.hints = kParameterIsAutomatable;
         parameter.name = "Mix"; parameter.symbol = "mix";
-        parameter.ranges.def = BASTOS_PARAM_MIX_DEFAULT;
-        parameter.ranges.min = BASTOS_PARAM_MIX_MIN;
-        parameter.ranges.max = BASTOS_PARAM_MIX_MAX;
+        parameter.ranges.def = HAVOC_PARAM_MIX_DEFAULT;
+        parameter.ranges.min = HAVOC_PARAM_MIX_MIN;
+        parameter.ranges.max = HAVOC_PARAM_MIX_MAX;
         break;
     default:
         break;
     }
 }
 
-float BastosPluginAdapter::getParameterValue(const uint32_t index) const
+float HavocPluginAdapter::getParameterValue(const uint32_t index) const
 {
     switch (index)
     {
@@ -171,7 +171,7 @@ float BastosPluginAdapter::getParameterValue(const uint32_t index) const
     }
 }
 
-void BastosPluginAdapter::setParameterValue(const uint32_t index, const float value)
+void HavocPluginAdapter::setParameterValue(const uint32_t index, const float value)
 {
     switch (index)
     {
@@ -192,25 +192,25 @@ void BastosPluginAdapter::setParameterValue(const uint32_t index, const float va
     }
 }
 
-void BastosPluginAdapter::activate()
+void HavocPluginAdapter::activate()
 {
     shaper_.prepare(getSampleRate());
     dryLeft_.assign(getBufferSize(), 0.f);
     dryRight_.assign(getBufferSize(), 0.f);
 }
 
-void BastosPluginAdapter::deactivate()
+void HavocPluginAdapter::deactivate()
 {
     shaper_.reset();
 }
 
-void BastosPluginAdapter::bufferSizeChanged(const uint32_t newBufferSize)
+void HavocPluginAdapter::bufferSizeChanged(const uint32_t newBufferSize)
 {
     dryLeft_.assign(newBufferSize, 0.f);
     dryRight_.assign(newBufferSize, 0.f);
 }
 
-void BastosPluginAdapter::run(const float** inputs, float** outputs, const uint32_t frames)
+void HavocPluginAdapter::run(const float** inputs, float** outputs, const uint32_t frames)
 {
     // Input peak (matches the JUCE-era processBlock()'s per-block peak scan).
     float inPeak = 0.f;
@@ -265,6 +265,6 @@ void BastosPluginAdapter::run(const float** inputs, float** outputs, const uint3
     outputLevelMeter_.write(outPeak);
 }
 
-Plugin* createPlugin() { return new BastosPluginAdapter(); }
+Plugin* createPlugin() { return new HavocPluginAdapter(); }
 
 END_NAMESPACE_DISTRHO

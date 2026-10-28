@@ -3,13 +3,13 @@
 
 int main()
 {
-    const auto presets = bastosFactoryPresets();
+    const auto presets = havocFactoryPresets();
     CHECK(presets.size() == 3);
 
     for (const auto& p : presets)
     {
-        CHECK(p.pluginId == "com.spellbound.bastos");
-        CHECK(p.parameters.size() == 13);   // all 13 BASTOS_PARAM_* ids present
+        CHECK(p.pluginId == "com.spellbound.havoc");
+        CHECK(p.parameters.size() == 13);   // all 13 HAVOC_PARAM_* ids present
     }
 
     CHECK(presets[0].name == "Punchy Kick");

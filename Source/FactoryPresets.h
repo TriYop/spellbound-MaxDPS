@@ -4,11 +4,11 @@
 
 #include <vector>
 
-// Bastos's factory presets -- authored from scratch for this migration
+// Havoc's factory presets -- authored from scratch for this migration
 // (the JUCE-era plugin never had a presets system to convert, unlike Hex's
 // hand-converted XML-derived presets). Parameter ids match Source/
 // DistrhoPluginInfo.h's symbol strings exactly (atk_gain, atk_sub_count, ...).
-inline std::vector<audioplugins::common::presets::Preset> bastosFactoryPresets()
+inline std::vector<audioplugins::common::presets::Preset> havocFactoryPresets()
 {
     using audioplugins::common::presets::Preset;
     std::vector<Preset> presets;
@@ -18,7 +18,7 @@ inline std::vector<audioplugins::common::presets::Preset> bastosFactoryPresets()
         // reinforcement, minimal sustain shaping.
         Preset p;
         p.name = "Punchy Kick";
-        p.pluginId = "com.spellbound.bastos";
+        p.pluginId = "com.spellbound.havoc";
         p.schemaVersion = 1;
         p.parameters = {
             {"atk_gain", 8.0f}, {"atk_sub_count", 2.0f}, {"atk_sub_level", 0.6f},
@@ -34,7 +34,7 @@ inline std::vector<audioplugins::common::presets::Preset> bastosFactoryPresets()
         // and sustain, gentle gain shaping -- thickens thin kick samples.
         Preset p;
         p.name = "Sub Reinforce";
-        p.pluginId = "com.spellbound.bastos";
+        p.pluginId = "com.spellbound.havoc";
         p.schemaVersion = 1;
         p.parameters = {
             {"atk_gain", 2.0f}, {"atk_sub_count", 3.0f}, {"atk_sub_level", 0.8f},
@@ -50,7 +50,7 @@ inline std::vector<audioplugins::common::presets::Preset> bastosFactoryPresets()
         // click on attack, sustain pulled down for a tighter, snappier feel.
         Preset p;
         p.name = "Snappy Transient";
-        p.pluginId = "com.spellbound.bastos";
+        p.pluginId = "com.spellbound.havoc";
         p.schemaVersion = 1;
         p.parameters = {
             {"atk_gain", 10.0f}, {"atk_sub_count", 1.0f}, {"atk_sub_level", 0.2f},

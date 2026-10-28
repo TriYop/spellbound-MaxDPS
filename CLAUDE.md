@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Spellbound Bastos is a DPF audio **effect** plugin (VST3 / CLAP / LV2) combining a dual-envelope (fast/sustain) transient designer with independent sub-harmonic and upper-harmonic generation per phase, targeting kick drum processing and general low-frequency transient shaping. It is an effect -- audio is modified in-place, not analyzed. There is no bypass parameter and no bandpass/dynamic-EQ mode -- an earlier version of this document described a "BassEnhancer" stage and bypass/bandpass controls that were never actually implemented; ignore any reference to those elsewhere, they do not exist in this codebase.
+Spellbound Havoc is a DPF audio **effect** plugin (VST3 / CLAP / LV2) combining a dual-envelope (fast/sustain) transient designer with independent sub-harmonic and upper-harmonic generation per phase, targeting kick drum processing and general low-frequency transient shaping. It is an effect -- audio is modified in-place, not analyzed. There is no bypass parameter and no bandpass/dynamic-EQ mode -- an earlier version of this document described a "BassEnhancer" stage and bypass/bandpass controls that were never actually implemented; ignore any reference to those elsewhere, they do not exist in this codebase.
 
-**Current state: migrated off JUCE onto DPF.** `Source/DSP/TransientShaperCore.h/.cpp` is a framework-free port of the original JUCE-dependent `TransientShaper` (replacing `juce::dsp::IIR::Filter`/`juce::AudioBuffer`/`juce::Decibels` with a hand-rolled RBJ biquad and raw channel pointers), unit-tested via CTest and verified against the JUCE original via a golden-vector capture. `Source/BastosPluginAdapter.{h,cpp}` wires all 13 host parameters and replicates the JUCE-era processBlock()'s dry/wet mix, output gain, and peak metering. `Source/BastosUI.{h,cpp}` has the ported editor (13 rotary knobs across Attack/Sustain/Global groups, 2 VU meters) plus a **new** factory-presets panel (Bastos never had one in JUCE) backed by `Source/FactoryPresets.h`'s 3 presets and `AudioPlugins/Common`'s `PresetBrowser`/`PresetSelector`/`Button`. The JUCE-era `PluginProcessor`/`PluginEditor`/original `TransientShaper` are preserved unchanged under `Source/_juce_reference/` as the porting reference. Rebranded from the legacy `YvanJanet`/`com.yvanjanet.bastos` identity to `Spellbound`/`com.spellbound.bastos`, matching every other migrated plugin. See `docs/superpowers/plans/2026-09-06-maxdps-dpf-migration.md` for the full task-by-task migration record.
+**Current state: migrated off JUCE onto DPF.** `Source/DSP/TransientShaperCore.h/.cpp` is a framework-free port of the original JUCE-dependent `TransientShaper` (replacing `juce::dsp::IIR::Filter`/`juce::AudioBuffer`/`juce::Decibels` with a hand-rolled RBJ biquad and raw channel pointers), unit-tested via CTest and verified against the JUCE original via a golden-vector capture. `Source/HavocPluginAdapter.{h,cpp}` wires all 13 host parameters and replicates the JUCE-era processBlock()'s dry/wet mix, output gain, and peak metering. `Source/HavocUI.{h,cpp}` has the editor (12 labelled rotary knobs across titled Attack/Sustain/Global groups, plus a rightmost master strip with IN/OUT VU meters and the Output Gain fader; geometry in the framework-free `Source/HavocLayout.h`) plus a **new** factory-presets panel (Havoc never had one in JUCE) backed by `Source/FactoryPresets.h`'s 3 presets and `AudioPlugins/Common`'s `PresetBrowser`/`PresetSelector`/`Button`. The JUCE-era `PluginProcessor`/`PluginEditor`/original `TransientShaper` are preserved unchanged under `Source/_juce_reference/` as the porting reference. Rebranded from the legacy `YvanJanet`/`com.yvanjanet.havoc` identity to `Spellbound`/`com.spellbound.havoc`, matching every other migrated plugin. See `docs/superpowers/plans/2026-09-06-maxdps-dpf-migration.md` for the full task-by-task migration record.
 
 ## Build Commands
 
@@ -31,18 +31,18 @@ cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS
 cmake --build build --parallel
 
 # Build outputs (DPF layout, under build/bin/ -- no Standalone target:
-# Bastos is an effect, not an instrument)
-#   build/bin/Bastos.vst3/
-#   build/bin/Bastos.clap
-#   build/bin/Bastos.lv2/
+# Havoc is an effect, not an instrument)
+#   build/bin/Havoc.vst3/
+#   build/bin/Havoc.clap
+#   build/bin/Havoc.lv2/
 
 # Unit tests (DSP + presets, no DPF/JUCE dependency)
 ctest --test-dir build --output-on-failure
 
 # Install plugins (Linux, dev build)
-cp -r build/bin/Bastos.vst3 ~/.vst3/
-cp    build/bin/Bastos.clap ~/.clap/
-cp -r build/bin/Bastos.lv2  ~/.lv2/
+cp -r build/bin/Havoc.vst3 ~/.vst3/
+cp    build/bin/Havoc.clap ~/.clap/
+cp -r build/bin/Havoc.lv2  ~/.lv2/
 ```
 
 ### Release packaging
@@ -53,7 +53,7 @@ cmake --build build-release --parallel
 cd build-release && cpack
 ```
 
-Produces a portable `Bastos-<version>-linux-x86_64.tar.gz` with `install.sh`/`uninstall.sh` for installing VST3/CLAP/LV2 to the user's plugin directories.
+Produces a portable `Havoc-<version>-linux-x86_64.tar.gz` with `install.sh`/`uninstall.sh` for installing VST3/CLAP/LV2 to the user's plugin directories.
 
 ### Create a Debian package
 
@@ -63,10 +63,10 @@ cmake --build build-deb --parallel
 cd build-deb && cpack
 ```
 
-Produces `spellbound-bastos_<version>_<arch>.deb`, installing to
+Produces `spellbound-havoc_<version>_<arch>.deb`, installing to
 `/usr/lib/{vst3,clap,lv2}` via `dpkg`. Requires `dpkg-dev` on the build host
 (provides `dpkg-shlibdeps`, which auto-derives the package's runtime
-`Depends:`). Uninstall with `sudo apt remove spellbound-bastos`.
+`Depends:`). Uninstall with `sudo apt remove spellbound-havoc`.
 
 ## Architecture
 
@@ -74,9 +74,10 @@ Produces `spellbound-bastos_<version>_<arch>.deb`, installing to
 
 ```
 Source/
-  DistrhoPluginInfo.h        -- DPF metadata, BastosParameters enum, BASTOS_PARAM_* ranges/defaults
-  BastosPluginAdapter.h/.cpp -- DPF Plugin: parameters, dry/wet mix, output gain, peak metering
-  BastosUI.h/.cpp            -- DPF UI: 13 RotaryKnobs, 2 VuMeters, presets bar
+  DistrhoPluginInfo.h        -- DPF metadata, HavocParameters enum, HAVOC_PARAM_* ranges/defaults
+  HavocPluginAdapter.h/.cpp -- DPF Plugin: parameters, dry/wet mix, output gain, peak metering
+  HavocLayout.h             -- framework-free UI geometry (header band, 3 groups, knob/label slots, master strip; unit-tested)
+  HavocUI.h/.cpp            -- DPF UI: shared PluginHeader, 12 RotaryKnobs in 3 group panels, MasterStrip (IN/OUT meters + Output Gain fader)
   FactoryPresets.h           -- 3 hand-authored factory presets
   DSP/
     TransientShaperCore.h/.cpp -- framework-free dual-envelope transient designer (unit-tested)
@@ -122,8 +123,13 @@ No bypass parameter exists (there never was one, even pre-migration).
 
 ### Key design constraints
 
-- **DSP is framework-free and unit-tested independently of DPF** (`Source/DSP/TransientShaperCore.h/.cpp` + `Tests/test_transientshapercore.cpp`, CTest, verified against the original JUCE implementation via a golden-vector capture) -- `BastosPluginAdapter`/`BastosUI` are thin adapters with no DSP logic of their own.
+- **DSP is framework-free and unit-tested independently of DPF** (`Source/DSP/TransientShaperCore.h/.cpp` + `Tests/test_transientshapercore.cpp`, CTest, verified against the original JUCE implementation via a golden-vector capture) -- `HavocPluginAdapter`/`HavocUI` are thin adapters with no DSP logic of their own.
 - **In-place processing**: `run()` modifies the output buffer directly; `TransientShaperCore` owns no per-block scratch beyond its 2-channel envelope/filter state.
 - **Peak meters are direct-access, not DPF parameters**: `DISTRHO_PLUGIN_WANT_DIRECT_ACCESS` + `getPluginInstancePointer()`, same idiom as every other plugin in this workspace -- clap-validator rejects host-visible, audio-reactive output parameters regardless of hints.
-- **Resizable UI + shared zoom pills**: `DISTRHO_UI_USER_RESIZABLE 1`, `UI(W,H,true)` (base 660x484, unchanged). `AudioPluginsCommon::hui::dgl::ZoomPills` sits right-aligned in the preset bar (`BastosUI::zoomPills_`, declared BEFORE `presetSelector_` so the preset dropdown draws over it; `minX` = DELETE button right edge + 8; hidden if the bar is too narrow). Zoom persists as the single DPF state `"zoom"` (`DISTRHO_PLUGIN_WANT_STATE`/`NUM_STATES 1`, `WANT_FULL_STATE 1` for `getState`); the adapter holds it in Common's lock-free `ZoomStateHolder` (validated by `ZoomController::parseState`; LV2 `setState` may run on the audio thread) ("0".."3", junk ignored, default "0"). `Bastos` links `AudioPluginsCommon::hui` (DSP side) for that. LV2 needs the DPF patch `cmake/patches/dpf-lv2-ui-resize.patch` (chained in the `dpf` `PATCH_COMMAND`) so `Bastos_ui.ttl` advertises `ui:resize`. Holder is unit-tested in Common (`tests/test_zoom_controller.cpp`).
+- **Shared Spellbound UI layout** (Common `PluginHeader`/`drawGroupPanel`/`MasterStrip`, see Common's `docs/superpowers/specs/2026-10-28-spellbound-ui-layout-design.md`): all geometry comes from `Source/HavocLayout.h` (`havoc::layout::computeLayout()`, pure, tested by `Tests/test_havoclayout.cpp`); `HavocUI` only places widgets at its rects. Header: preset bar + zoom pills, title `SPELLBOUND HAVOC` and the hook `Transient Devastation` via `setTagline()` (band 98px; the title is on-screen only, the plugin name/IDs/preset folder are still Havoc until the rebrand pass). Groups ATTACK/SUSTAIN/GLOBAL in their accents (`0x44aaee`/`0x44ddaa`/`0xaaaa66`), knobs 72px with `knobPaletteFor(accent)` (value arc only) and 11px labels under each knob (GAIN, SUB #, SUB LVL, UPPER #, UPPER LVL, SPEED, MIX). Output Gain is the master strip's vertical fader (`VOL`), not a knob: `havoc::layout::isFaderParam()` routes `parameterChanged`/`applyPreset`/`captureCurrentParameters` for that index to the fader (`knobs_[kParameterOutputGain]` is null). The strip's meters show input and output peak, captioned `IN`/`OUT` via `MasterStrip::setMeterLabels()`. `HavocUI.cpp` static_asserts the layout's parameter indices against the `kParameter*` enum; the test checks `DISTRHO_UI_DEFAULT_WIDTH/HEIGHT` equal the computed size. Keep `header_` the last member (widgets are built in the initialiser list) so the preset dropdown overlays everything.
+- **Resizable UI + shared zoom pills**: `DISTRHO_UI_USER_RESIZABLE 1`, `UI(W,H,true)` (base 596x414 from `computeLayout()`; was 660x484 before the shared layout). `AudioPluginsCommon::hui::dgl::ZoomPills` sits right-aligned in the preset bar, owned by the shared `PluginHeader` (`HavocUI::header_`, constructed BEFORE the header's preset selector so the dropdown draws over it; hidden if the bar is too narrow). Zoom persists as the single DPF state `"zoom"` (`DISTRHO_PLUGIN_WANT_STATE`/`NUM_STATES 1`, `WANT_FULL_STATE 1` for `getState`); the adapter holds it in Common's lock-free `ZoomStateHolder` (validated by `ZoomController::parseState`; LV2 `setState` may run on the audio thread) ("0".."3", junk ignored, default "0"). `Havoc` links `AudioPluginsCommon::hui` (DSP side) for that. LV2 needs the DPF patch `cmake/patches/dpf-lv2-ui-resize.patch` (chained in the `dpf` `PATCH_COMMAND`) so `Havoc_ui.ttl` advertises `ui:resize`. Holder is unit-tested in Common (`tests/test_zoom_controller.cpp`).
 - **Zero latency**: `TransientShaperCore` has no delay lines; `DISTRHO_PLUGIN_WANT_LATENCY 0`.
+
+## Rebrand note (Bastos -> Havoc)
+
+Renamed from Bastos 2026-10-28. Plugin identity changed: URI `https://spellbound.audio/plugins/havoc`, CLAP id `com.spellbound.havoc`, VST3 unique id `Hvoc` (was `Bsts`). Old sessions will not find the plugin. `scripts/install.sh` removes legacy `Bastos.*` bundles and migrates `~/.config/Bastos` to `~/.config/Havoc`. Dated docs under `docs/superpowers/` keep the old name as history.
