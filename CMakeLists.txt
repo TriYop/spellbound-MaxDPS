@@ -100,6 +100,12 @@ target_link_libraries(test_factorypresets PRIVATE AudioPluginsCommon::presets)
 target_compile_features(test_factorypresets PRIVATE cxx_std_20)
 add_test(NAME FactoryPresets COMMAND test_factorypresets)
 
+add_executable(test_bastoslayout Tests/test_bastoslayout.cpp)
+target_include_directories(test_bastoslayout PRIVATE Source/ Tests/)
+target_link_libraries(test_bastoslayout PRIVATE AudioPluginsCommon::hui)
+target_compile_features(test_bastoslayout PRIVATE cxx_std_20)
+add_test(NAME BastosLayout COMMAND test_bastoslayout)
+
 # ── Install rules ─────────────────────────────────────────────────────────
 # DPF writes all format outputs under a flat bin/ dir -- no Standalone
 # target: Bastos is an effect, and this workspace only requires Standalone
