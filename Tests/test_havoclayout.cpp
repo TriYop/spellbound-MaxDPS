@@ -1,5 +1,5 @@
 #include "test_runner.h"
-#include "../Source/BastosLayout.h"
+#include "../Source/HavocLayout.h"
 #include "../Source/DistrhoPluginInfo.h"
 
 #include <audioplugins/common/hui/GroupLayout.h>
@@ -10,7 +10,7 @@
 #include <cstdint>
 
 namespace hui = audioplugins::common::hui;
-namespace bl = bastos::layout;
+namespace bl = havoc::layout;
 
 namespace {
 

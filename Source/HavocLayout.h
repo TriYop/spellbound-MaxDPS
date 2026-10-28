@@ -1,6 +1,6 @@
 #pragma once
 
-// Pure, framework-free geometry for Bastos' UI: header band on top, three
+// Pure, framework-free geometry for Havoc' UI: header band on top, three
 // ATTACK / SUSTAIN / GLOBAL group panels, and a full-height master strip
 // (IN/OUT meters + Output Gain fader) on the right. No DGL/DPF includes so
 // it is unit-testable; it consumes Common's framework-free layout helpers.
@@ -12,7 +12,7 @@
 #include <array>
 #include <cstdint>
 
-namespace bastos::layout {
+namespace havoc::layout {
 
 namespace hui = audioplugins::common::hui;
 
@@ -20,7 +20,7 @@ struct Rect { float x = 0, y = 0, w = 0, h = 0; };
 struct KnobSlot { Rect body; Rect label; };
 
 // Parameter indices mirror the kParameter* enum in DistrhoPluginInfo.h (kept
-// free of that header so this file stays pure geometry); BastosUI.cpp
+// free of that header so this file stays pure geometry); HavocUI.cpp
 // static_asserts the two stay in sync and the layout test checks them too.
 constexpr uint32_t kAtkGain = 0, kAtkSubCount = 1, kAtkSubLevel = 2, kAtkUpperCount = 3,
                    kAtkUpperLevel = 4, kSusGain = 5, kSusSubCount = 6, kSusSubLevel = 7,
@@ -96,4 +96,4 @@ inline UiLayout computeLayout() noexcept
     return l;
 }
 
-} // namespace bastos::layout
+} // namespace havoc::layout

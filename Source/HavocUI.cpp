@@ -1,4 +1,4 @@
-#include "BastosUI.h"
+#include "HavocUI.h"
 #include "FactoryPresets.h"
 
 #include "audioplugins/common/hui/dgl/GroupPanel.h"
@@ -12,9 +12,9 @@ START_NAMESPACE_DISTRHO
 namespace {
 
 namespace hui = audioplugins::common::hui;
-namespace bl = bastos::layout;
+namespace bl = havoc::layout;
 
-// BastosLayout.h mirrors the parameter enum without including this header.
+// HavocLayout.h mirrors the parameter enum without including this header.
 static_assert(bl::kAtkGain == kParameterAtkGain && bl::kAtkSubCount == kParameterAtkSubCount &&
               bl::kAtkSubLevel == kParameterAtkSubLevel && bl::kAtkUpperCount == kParameterAtkUpperCount &&
               bl::kAtkUpperLevel == kParameterAtkUpperLevel && bl::kSusGain == kParameterSusGain &&
@@ -22,7 +22,7 @@ static_assert(bl::kAtkGain == kParameterAtkGain && bl::kAtkSubCount == kParamete
               bl::kSusUpperCount == kParameterSusUpperCount && bl::kSusUpperLevel == kParameterSusUpperLevel &&
               bl::kSpeed == kParameterSpeed && bl::kOutputGain == kParameterOutputGain &&
               bl::kMix == kParameterMix && bl::kParamCount == kParameterCount,
-              "BastosLayout.h parameter indices must match the kParameter* enum");
+              "HavocLayout.h parameter indices must match the kParameter* enum");
 static_assert(bl::isFaderParam(kParameterOutputGain), "Output Gain is the master fader");
 
 const hui::Theme& kTheme = hui::defaultTheme();
@@ -46,19 +46,19 @@ DGL_NAMESPACE::Color toDglColor(const hui::Colour& c) noexcept
 struct ParamSpec { const char* id; float min, max, def; const hui::Colour* accent; const char* label; };
 
 constexpr ParamSpec kParams[kParameterCount] = {
-    {"atk_gain",        BASTOS_PARAM_ATK_GAIN_MIN,        BASTOS_PARAM_ATK_GAIN_MAX,        BASTOS_PARAM_ATK_GAIN_DEFAULT,        &kAtkAccent,  "GAIN"},
-    {"atk_sub_count",   BASTOS_PARAM_ATK_SUB_COUNT_MIN,   BASTOS_PARAM_ATK_SUB_COUNT_MAX,   BASTOS_PARAM_ATK_SUB_COUNT_DEFAULT,   &kAtkAccent,  "SUB #"},
-    {"atk_sub_level",   BASTOS_PARAM_ATK_SUB_LEVEL_MIN,   BASTOS_PARAM_ATK_SUB_LEVEL_MAX,   BASTOS_PARAM_ATK_SUB_LEVEL_DEFAULT,   &kAtkAccent,  "SUB LVL"},
-    {"atk_upper_count", BASTOS_PARAM_ATK_UPPER_COUNT_MIN, BASTOS_PARAM_ATK_UPPER_COUNT_MAX, BASTOS_PARAM_ATK_UPPER_COUNT_DEFAULT, &kAtkAccent,  "UPPER #"},
-    {"atk_upper_level", BASTOS_PARAM_ATK_UPPER_LEVEL_MIN, BASTOS_PARAM_ATK_UPPER_LEVEL_MAX, BASTOS_PARAM_ATK_UPPER_LEVEL_DEFAULT, &kAtkAccent,  "UPPER LVL"},
-    {"sus_gain",        BASTOS_PARAM_SUS_GAIN_MIN,        BASTOS_PARAM_SUS_GAIN_MAX,        BASTOS_PARAM_SUS_GAIN_DEFAULT,        &kSusAccent,  "GAIN"},
-    {"sus_sub_count",   BASTOS_PARAM_SUS_SUB_COUNT_MIN,   BASTOS_PARAM_SUS_SUB_COUNT_MAX,   BASTOS_PARAM_SUS_SUB_COUNT_DEFAULT,   &kSusAccent,  "SUB #"},
-    {"sus_sub_level",   BASTOS_PARAM_SUS_SUB_LEVEL_MIN,   BASTOS_PARAM_SUS_SUB_LEVEL_MAX,   BASTOS_PARAM_SUS_SUB_LEVEL_DEFAULT,   &kSusAccent,  "SUB LVL"},
-    {"sus_upper_count", BASTOS_PARAM_SUS_UPPER_COUNT_MIN, BASTOS_PARAM_SUS_UPPER_COUNT_MAX, BASTOS_PARAM_SUS_UPPER_COUNT_DEFAULT, &kSusAccent,  "UPPER #"},
-    {"sus_upper_level", BASTOS_PARAM_SUS_UPPER_LEVEL_MIN, BASTOS_PARAM_SUS_UPPER_LEVEL_MAX, BASTOS_PARAM_SUS_UPPER_LEVEL_DEFAULT, &kSusAccent,  "UPPER LVL"},
-    {"speed",           BASTOS_PARAM_SPEED_MIN,           BASTOS_PARAM_SPEED_MAX,           BASTOS_PARAM_SPEED_DEFAULT,           &kGlobAccent, "SPEED"},
-    {"output_gain",     BASTOS_PARAM_OUTPUT_GAIN_MIN,     BASTOS_PARAM_OUTPUT_GAIN_MAX,     BASTOS_PARAM_OUTPUT_GAIN_DEFAULT,     &kGlobAccent, "VOL"},
-    {"mix",             BASTOS_PARAM_MIX_MIN,             BASTOS_PARAM_MIX_MAX,             BASTOS_PARAM_MIX_DEFAULT,             &kGlobAccent, "MIX"},
+    {"atk_gain",        HAVOC_PARAM_ATK_GAIN_MIN,        HAVOC_PARAM_ATK_GAIN_MAX,        HAVOC_PARAM_ATK_GAIN_DEFAULT,        &kAtkAccent,  "GAIN"},
+    {"atk_sub_count",   HAVOC_PARAM_ATK_SUB_COUNT_MIN,   HAVOC_PARAM_ATK_SUB_COUNT_MAX,   HAVOC_PARAM_ATK_SUB_COUNT_DEFAULT,   &kAtkAccent,  "SUB #"},
+    {"atk_sub_level",   HAVOC_PARAM_ATK_SUB_LEVEL_MIN,   HAVOC_PARAM_ATK_SUB_LEVEL_MAX,   HAVOC_PARAM_ATK_SUB_LEVEL_DEFAULT,   &kAtkAccent,  "SUB LVL"},
+    {"atk_upper_count", HAVOC_PARAM_ATK_UPPER_COUNT_MIN, HAVOC_PARAM_ATK_UPPER_COUNT_MAX, HAVOC_PARAM_ATK_UPPER_COUNT_DEFAULT, &kAtkAccent,  "UPPER #"},
+    {"atk_upper_level", HAVOC_PARAM_ATK_UPPER_LEVEL_MIN, HAVOC_PARAM_ATK_UPPER_LEVEL_MAX, HAVOC_PARAM_ATK_UPPER_LEVEL_DEFAULT, &kAtkAccent,  "UPPER LVL"},
+    {"sus_gain",        HAVOC_PARAM_SUS_GAIN_MIN,        HAVOC_PARAM_SUS_GAIN_MAX,        HAVOC_PARAM_SUS_GAIN_DEFAULT,        &kSusAccent,  "GAIN"},
+    {"sus_sub_count",   HAVOC_PARAM_SUS_SUB_COUNT_MIN,   HAVOC_PARAM_SUS_SUB_COUNT_MAX,   HAVOC_PARAM_SUS_SUB_COUNT_DEFAULT,   &kSusAccent,  "SUB #"},
+    {"sus_sub_level",   HAVOC_PARAM_SUS_SUB_LEVEL_MIN,   HAVOC_PARAM_SUS_SUB_LEVEL_MAX,   HAVOC_PARAM_SUS_SUB_LEVEL_DEFAULT,   &kSusAccent,  "SUB LVL"},
+    {"sus_upper_count", HAVOC_PARAM_SUS_UPPER_COUNT_MIN, HAVOC_PARAM_SUS_UPPER_COUNT_MAX, HAVOC_PARAM_SUS_UPPER_COUNT_DEFAULT, &kSusAccent,  "UPPER #"},
+    {"sus_upper_level", HAVOC_PARAM_SUS_UPPER_LEVEL_MIN, HAVOC_PARAM_SUS_UPPER_LEVEL_MAX, HAVOC_PARAM_SUS_UPPER_LEVEL_DEFAULT, &kSusAccent,  "UPPER LVL"},
+    {"speed",           HAVOC_PARAM_SPEED_MIN,           HAVOC_PARAM_SPEED_MAX,           HAVOC_PARAM_SPEED_DEFAULT,           &kGlobAccent, "SPEED"},
+    {"output_gain",     HAVOC_PARAM_OUTPUT_GAIN_MIN,     HAVOC_PARAM_OUTPUT_GAIN_MAX,     HAVOC_PARAM_OUTPUT_GAIN_DEFAULT,     &kGlobAccent, "VOL"},
+    {"mix",             HAVOC_PARAM_MIX_MIN,             HAVOC_PARAM_MIX_MAX,             HAVOC_PARAM_MIX_DEFAULT,             &kGlobAccent, "MIX"},
 };
 
 int px(float v) noexcept { return static_cast<int>(std::lround(v)); }
@@ -67,13 +67,13 @@ uint upx(float v) noexcept { return static_cast<uint>(std::lround(v)); }
 // Gesture bracketing follows DPF's own idiom (examples/CairoUI: drag
 // started/finished -> editParameter, value changed -> setParameterValue).
 template <class Control>
-void bindToParameter(BastosUI& ui, Control& control, const uint32_t paramIndex)
+void bindToParameter(HavocUI& ui, Control& control, const uint32_t paramIndex)
 {
     control.onDragStateChanged = [&ui, paramIndex](const bool started) { ui.editParameter(paramIndex, started); };
     control.onValueChanged = [&ui, paramIndex](const float value) { ui.setParameterValue(paramIndex, value); };
 }
 
-std::unique_ptr<hui::dgl::RotaryKnob> makeKnob(BastosUI& ui, const bl::KnobSlot& slot, const uint32_t paramIndex)
+std::unique_ptr<hui::dgl::RotaryKnob> makeKnob(HavocUI& ui, const bl::KnobSlot& slot, const uint32_t paramIndex)
 {
     const ParamSpec& spec = kParams[paramIndex];
     auto knob = std::make_unique<hui::dgl::RotaryKnob>(&ui);
@@ -88,7 +88,7 @@ std::unique_ptr<hui::dgl::RotaryKnob> makeKnob(BastosUI& ui, const bl::KnobSlot&
 }
 
 // Every knob, indexed by parameter index; the fader's slot stays null.
-std::array<std::unique_ptr<hui::dgl::RotaryKnob>, kParameterCount> makeKnobs(BastosUI& ui, const bl::UiLayout& layout)
+std::array<std::unique_ptr<hui::dgl::RotaryKnob>, kParameterCount> makeKnobs(HavocUI& ui, const bl::UiLayout& layout)
 {
     std::array<std::unique_ptr<hui::dgl::RotaryKnob>, kParameterCount> knobs;
     for (uint32_t i = 0; i < kParameterCount; ++i)
@@ -99,7 +99,7 @@ std::array<std::unique_ptr<hui::dgl::RotaryKnob>, kParameterCount> makeKnobs(Bas
 
 // Linux-only for now, matching Hex's hexUserPresetsDirectory() precedent
 // (~/.config/<Name>/presets).
-std::string bastosUserPresetsDirectory()
+std::string havocUserPresetsDirectory()
 {
     const char* home = std::getenv("HOME");
     if (home == nullptr)
@@ -109,7 +109,7 @@ std::string bastosUserPresetsDirectory()
 
 } // namespace
 
-BastosUI::BastosUI()
+HavocUI::HavocUI()
     : UI(DISTRHO_UI_DEFAULT_WIDTH, DISTRHO_UI_DEFAULT_HEIGHT, true),
       layout_(bl::computeLayout()),
       // Widgets are built in the initialiser list, before header_ (the last
@@ -117,8 +117,8 @@ BastosUI::BastosUI()
       knobs_(makeKnobs(*this, layout_)),
       master_(this, /*withFader=*/true),
       fader_(master_.fader()),
-      pluginPtr_(static_cast<BastosPluginAdapter*>(getPluginInstancePointer())),
-      presetBrowser_(bastosFactoryPresets(), bastosUserPresetsDirectory(), "com.spellbound.bastos"),
+      pluginPtr_(static_cast<HavocPluginAdapter*>(getPluginInstancePointer())),
+      presetBrowser_(havocFactoryPresets(), havocUserPresetsDirectory(), "com.spellbound.bastos"),
       header_(this, "SPELLBOUND HAVOC", DISTRHO_UI_DEFAULT_WIDTH, DISTRHO_UI_DEFAULT_HEIGHT,
               [this](const char* key, const char* value) { setState(key, value); })
 {
@@ -154,11 +154,11 @@ BastosUI::BastosUI()
 
     header_.saveButton().onClick = [this]()
     {
-        const std::string startDir = bastosUserPresetsDirectory();
+        const std::string startDir = havocUserPresetsDirectory();
         FileBrowserOptions options;
         options.saving = true;
         options.defaultName = "New Preset.xml";
-        options.title = "Save Bastos Preset";
+        options.title = "Save Havoc Preset";
         options.startDir = startDir.c_str();
         openFileBrowser(options);
     };
@@ -166,12 +166,12 @@ BastosUI::BastosUI()
     refreshPresetControls();
 }
 
-void BastosUI::stateChanged(const char* key, const char* value)
+void HavocUI::stateChanged(const char* key, const char* value)
 {
     header_.zoom().onStateChanged(key, value);
 }
 
-void BastosUI::uiFileBrowserSelected(const char* filename)
+void HavocUI::uiFileBrowserSelected(const char* filename)
 {
     if (filename == nullptr)
         return; // user cancelled the dialog
@@ -187,7 +187,7 @@ void BastosUI::uiFileBrowserSelected(const char* filename)
         refreshPresetControls();
 }
 
-void BastosUI::setControlValue(const uint32_t index, const float value)
+void HavocUI::setControlValue(const uint32_t index, const float value)
 {
     // setValue() on either widget deliberately does not fire onValueChanged,
     // so host automation / preset recall cannot loop back out to the host.
@@ -199,12 +199,12 @@ void BastosUI::setControlValue(const uint32_t index, const float value)
         knobs_[index]->setValue(value);
 }
 
-float BastosUI::controlValue(const uint32_t index) const
+float HavocUI::controlValue(const uint32_t index) const
 {
     return bl::isFaderParam(index) ? fader_->getValue() : knobs_[index]->getValue();
 }
 
-void BastosUI::applyPreset(const audioplugins::common::presets::Preset& preset)
+void HavocUI::applyPreset(const audioplugins::common::presets::Preset& preset)
 {
     for (const auto& pv : preset.parameters)
     {
@@ -224,7 +224,7 @@ void BastosUI::applyPreset(const audioplugins::common::presets::Preset& preset)
     }
 }
 
-std::vector<audioplugins::common::presets::ParameterValue> BastosUI::captureCurrentParameters() const
+std::vector<audioplugins::common::presets::ParameterValue> HavocUI::captureCurrentParameters() const
 {
     std::vector<audioplugins::common::presets::ParameterValue> parameters;
     parameters.reserve(kNumParams);
@@ -233,7 +233,7 @@ std::vector<audioplugins::common::presets::ParameterValue> BastosUI::captureCurr
     return parameters;
 }
 
-void BastosUI::refreshPresetControls()
+void HavocUI::refreshPresetControls()
 {
     const auto entries = presetBrowser_.getEntries();
     header_.presets().setEntries(entries);
@@ -246,12 +246,12 @@ void BastosUI::refreshPresetControls()
     header_.deleteButton().setEnabled(!isFactory);
 }
 
-void BastosUI::parameterChanged(const uint32_t index, const float value)
+void HavocUI::parameterChanged(const uint32_t index, const float value)
 {
     setControlValue(index, value);
 }
 
-void BastosUI::uiIdle()
+void HavocUI::uiIdle()
 {
     header_.zoom().onIdle();
 
@@ -265,7 +265,7 @@ void BastosUI::uiIdle()
     master_.right().pushLevel(pluginPtr_->getOutputLevel());
 }
 
-void BastosUI::onNanoDisplay()
+void HavocUI::onNanoDisplay()
 {
     beginPath();
     rect(0, 0, static_cast<float>(getWidth()), static_cast<float>(getHeight()));
@@ -294,6 +294,6 @@ void BastosUI::onNanoDisplay()
     header_.drawTitle(*this, layout_.width); // base coordinates (UI auto-scale)
 }
 
-UI* createUI() { return new BastosUI(); }
+UI* createUI() { return new HavocUI(); }
 
 END_NAMESPACE_DISTRHO

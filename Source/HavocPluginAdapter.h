@@ -10,7 +10,7 @@
 START_NAMESPACE_DISTRHO
 
 /**
-   DPF Plugin adapter for Spellbound Bastos.
+   DPF Plugin adapter for Spellbound Havoc.
 
    Thin shim over TransientShaperCore (Source/DSP/TransientShaperCore.h,
    framework-free): reads all 13 host parameters, calls
@@ -25,10 +25,10 @@ START_NAMESPACE_DISTRHO
    DistrhoPluginInfo.h's DISTRHO_PLUGIN_WANT_DIRECT_ACCESS comment) --
    same idiom as Hex's IN/OUT meters.
  */
-class BastosPluginAdapter : public Plugin
+class HavocPluginAdapter : public Plugin
 {
 public:
-    BastosPluginAdapter();
+    HavocPluginAdapter();
 
 protected:
     // -- Information -----------------------------------------------------
@@ -51,7 +51,7 @@ protected:
 
 public:
     // -- Direct UI access (DISTRHO_PLUGIN_WANT_DIRECT_ACCESS) ---------------
-    // Read by BastosUI via getPluginInstancePointer() + uiIdle().
+    // Read by HavocUI via getPluginInstancePointer() + uiIdle().
     float getInputLevel() const noexcept { return inputLevelMeter_.read(); }
     float getOutputLevel() const noexcept { return outputLevelMeter_.read(); }
 
@@ -63,19 +63,19 @@ protected:
     void run(const float** inputs, float** outputs, uint32_t frames) override;
 
 private:
-    float atkGainDb_       = BASTOS_PARAM_ATK_GAIN_DEFAULT;
-    float atkSubCount_     = BASTOS_PARAM_ATK_SUB_COUNT_DEFAULT;
-    float atkSubLevel_     = BASTOS_PARAM_ATK_SUB_LEVEL_DEFAULT;
-    float atkUpperCount_   = BASTOS_PARAM_ATK_UPPER_COUNT_DEFAULT;
-    float atkUpperLevel_   = BASTOS_PARAM_ATK_UPPER_LEVEL_DEFAULT;
-    float susGainDb_       = BASTOS_PARAM_SUS_GAIN_DEFAULT;
-    float susSubCount_     = BASTOS_PARAM_SUS_SUB_COUNT_DEFAULT;
-    float susSubLevel_     = BASTOS_PARAM_SUS_SUB_LEVEL_DEFAULT;
-    float susUpperCount_   = BASTOS_PARAM_SUS_UPPER_COUNT_DEFAULT;
-    float susUpperLevel_   = BASTOS_PARAM_SUS_UPPER_LEVEL_DEFAULT;
-    float speed_           = BASTOS_PARAM_SPEED_DEFAULT;
-    float outputGainDb_    = BASTOS_PARAM_OUTPUT_GAIN_DEFAULT;
-    float mix_             = BASTOS_PARAM_MIX_DEFAULT;
+    float atkGainDb_       = HAVOC_PARAM_ATK_GAIN_DEFAULT;
+    float atkSubCount_     = HAVOC_PARAM_ATK_SUB_COUNT_DEFAULT;
+    float atkSubLevel_     = HAVOC_PARAM_ATK_SUB_LEVEL_DEFAULT;
+    float atkUpperCount_   = HAVOC_PARAM_ATK_UPPER_COUNT_DEFAULT;
+    float atkUpperLevel_   = HAVOC_PARAM_ATK_UPPER_LEVEL_DEFAULT;
+    float susGainDb_       = HAVOC_PARAM_SUS_GAIN_DEFAULT;
+    float susSubCount_     = HAVOC_PARAM_SUS_SUB_COUNT_DEFAULT;
+    float susSubLevel_     = HAVOC_PARAM_SUS_SUB_LEVEL_DEFAULT;
+    float susUpperCount_   = HAVOC_PARAM_SUS_UPPER_COUNT_DEFAULT;
+    float susUpperLevel_   = HAVOC_PARAM_SUS_UPPER_LEVEL_DEFAULT;
+    float speed_           = HAVOC_PARAM_SPEED_DEFAULT;
+    float outputGainDb_    = HAVOC_PARAM_OUTPUT_GAIN_DEFAULT;
+    float mix_             = HAVOC_PARAM_MIX_DEFAULT;
 
     TransientShaperCore shaper_;
     // Lock-free: LV2 setState may run on the audio thread, getState on the main thread.
@@ -89,7 +89,7 @@ private:
     audioplugins::common::io::MeterTransport inputLevelMeter_ { "input_level" };
     audioplugins::common::io::MeterTransport outputLevelMeter_ { "output_level" };
 
-    DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BastosPluginAdapter)
+    DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(HavocPluginAdapter)
 };
 
 END_NAMESPACE_DISTRHO

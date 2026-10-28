@@ -4,11 +4,11 @@
 
 #include <vector>
 
-// Bastos's factory presets -- authored from scratch for this migration
+// Havoc's factory presets -- authored from scratch for this migration
 // (the JUCE-era plugin never had a presets system to convert, unlike Hex's
 // hand-converted XML-derived presets). Parameter ids match Source/
 // DistrhoPluginInfo.h's symbol strings exactly (atk_gain, atk_sub_count, ...).
-inline std::vector<audioplugins::common::presets::Preset> bastosFactoryPresets()
+inline std::vector<audioplugins::common::presets::Preset> havocFactoryPresets()
 {
     using audioplugins::common::presets::Preset;
     std::vector<Preset> presets;
