@@ -2,7 +2,7 @@
 
 *"Transient Devastation"*
 
-(Project codename: Bastos)
+> **Renamed from Bastos.** The plugin ID changed (URI, CLAP id and VST3 unique id), so sessions saved with the old Bastos plugin will not find Havoc. `scripts/install.sh` removes the old `Bastos.*` bundles and migrates presets from `~/.config/Bastos` to `~/.config/Havoc` (only if the latter does not exist).
 
 
 
