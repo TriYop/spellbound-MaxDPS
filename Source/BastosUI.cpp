@@ -34,8 +34,6 @@ constexpr hui::Colour kSusAccent { 0x44, 0xdd, 0xaa, 0xff };
 constexpr hui::Colour kGlobAccent{ 0xaa, 0xaa, 0x66, 0xff };
 
 constexpr float kLabelFontSize = 11.0f;
-// MasterStrip's own L/R label size; Bastos relabels them IN/OUT.
-constexpr float kMeterLabelFontSize = 10.0f;
 
 DGL_NAMESPACE::Color toDglColor(const hui::Colour& c) noexcept
 {
@@ -44,7 +42,7 @@ DGL_NAMESPACE::Color toDglColor(const hui::Colour& c) noexcept
 }
 
 // One entry per parameter index. Output Gain (the fader) has no knob: its
-// label and accent are unused, its range feeds the fader.
+// range and label feed the master strip's fader, its accent is unused.
 struct ParamSpec { const char* id; float min, max, def; const hui::Colour* accent; const char* label; };
 
 constexpr ParamSpec kParams[kParameterCount] = {
@@ -129,6 +127,9 @@ BastosUI::BastosUI()
     DISTRHO_SAFE_ASSERT(header_.bandHeight() == layout_.header.bandHeight);
 
     master_.layout(layout_.master);
+    // The strip's meters show this plugin's input and output peaks, not a
+    // stereo pair.
+    master_.setMeterLabels("IN", "OUT");
     const ParamSpec& out = kParams[kParameterOutputGain];
     fader_->setRange(out.min, out.max);
     fader_->setDefaultValue(out.def);
@@ -234,10 +235,10 @@ std::vector<audioplugins::common::presets::ParameterValue> BastosUI::captureCurr
 
 void BastosUI::refreshPresetControls()
 {
-    header_.presets().setEntries(presetBrowser_.getEntries());
+    const auto entries = presetBrowser_.getEntries();
+    header_.presets().setEntries(entries);
     header_.presets().setCurrentIndex(presetBrowser_.getCurrentIndex());
 
-    const auto entries = presetBrowser_.getEntries();
     const int idx = presetBrowser_.getCurrentIndex();
     const bool isFactory = (idx >= 0 && static_cast<size_t>(idx) < entries.size())
                                 ? entries[static_cast<size_t>(idx)].isFactory
@@ -288,25 +289,7 @@ void BastosUI::onNanoDisplay()
         text(r.x + r.w * 0.5f, r.y + r.h * 0.5f, kParams[i].label, nullptr);
     }
 
-    // The strip's meters show this plugin's input and output peaks, not a
-    // stereo pair: replace its "L"/"R" captions with "IN"/"OUT".
     master_.draw(*this);
-    const auto strip = hui::computeMasterStripLayout(layout_.master, true);
-    const hui::MasterRect* const meterLabels[2] = {&strip.labelLeft, &strip.labelRight};
-    const char* const meterNames[2] = {"IN", "OUT"};
-    for (const hui::MasterRect* r : meterLabels)
-    {
-        beginPath();
-        rect(r->x, r->y, r->w, r->h);
-        fillColor(toDglColor(kTheme.widgetBackground));
-        fill();
-        closePath();
-    }
-    fontSize(kMeterLabelFontSize);
-    fillColor(toDglColor(kTheme.textDim));
-    for (int i = 0; i < 2; ++i)
-        text(meterLabels[i]->x + meterLabels[i]->w * 0.5f, meterLabels[i]->y + meterLabels[i]->h * 0.5f,
-             meterNames[i], nullptr);
 
     header_.drawTitle(*this, layout_.width); // base coordinates (UI auto-scale)
 }
