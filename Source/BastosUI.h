@@ -2,12 +2,11 @@
 
 #include "DistrhoUI.hpp"
 #include "BastosPluginAdapter.h"
+#include "BastosLayout.h"
 
+#include "audioplugins/common/hui/dgl/MasterStrip.h"
+#include "audioplugins/common/hui/dgl/PluginHeader.h"
 #include "audioplugins/common/hui/dgl/RotaryKnob.h"
-#include "audioplugins/common/hui/dgl/VuMeter.h"
-#include "audioplugins/common/hui/dgl/PresetSelector.h"
-#include "audioplugins/common/hui/dgl/Button.h"
-#include "audioplugins/common/hui/dgl/ZoomPills.h"
 #include "audioplugins/common/presets/PresetBrowser.h"
 
 #include <array>
@@ -19,18 +18,19 @@ START_NAMESPACE_DISTRHO
 /**
    DPF UI adapter for Spellbound Bastos.
 
-   13 RotaryKnobs across three groups (Attack/Sustain/Global) plus 2
-   VuMeters (IN/OUT), laid out to match the JUCE-era 660x460 editor's
-   three-column layout (see Source/_juce_reference/PluginEditor.cpp).
-   IN/OUT levels are polled every uiIdle() tick via
-   DISTRHO_PLUGIN_WANT_DIRECT_ACCESS + getPluginInstancePointer(), same
-   idiom as Hex's meters -- not a DPF parameter.
+   Geometry comes from the framework-free Source/BastosLayout.h. On screen:
+   Common's shared PluginHeader on top (preset bar, zoom pills, "SPELLBOUND
+   HAVOC" title and the "Transient Devastation" hook), three titled
+   ATTACK/SUSTAIN/GLOBAL group panels (drawGroupPanel, each in its accent)
+   holding 12 labelled RotaryKnobs, and Common's MasterStrip on the right:
+   IN/OUT VuMeters plus the vertical Output Gain fader. IN/OUT levels are
+   polled every uiIdle() tick via DISTRHO_PLUGIN_WANT_DIRECT_ACCESS +
+   getPluginInstancePointer(), same idiom as Hex's meters -- not a DPF
+   parameter.
 
-   Also has a presets panel (PresetSelector dropdown + SAVE/DELETE buttons)
-   above the knob panel, backed by AudioPluginsCommon::presets::
-   PresetBrowser and Bastos's 3 compiled-in factory presets
-   (Source/FactoryPresets.h) -- new to Bastos (the JUCE-era plugin never had
-   a presets system), following Hex's HexUI.h/.cpp precedent exactly.
+   Presets: PresetBrowser + Bastos's 3 compiled-in factory presets
+   (Source/FactoryPresets.h), reached through the header's selector and
+   SAVE/DELETE buttons.
  */
 class BastosUI : public UI
 {
@@ -48,33 +48,37 @@ protected:
     void uiFileBrowserSelected(const char* filename) override;
 
 private:
-    static constexpr int kNumKnobs = 13;
-    std::array<std::unique_ptr<audioplugins::common::hui::dgl::RotaryKnob>, kNumKnobs> knobs_;
-    std::unique_ptr<audioplugins::common::hui::dgl::VuMeter> inMeter_;
-    std::unique_ptr<audioplugins::common::hui::dgl::VuMeter> outMeter_;
+    static constexpr uint32_t kNumParams = bastos::layout::kParamCount;
+
+    const bastos::layout::UiLayout layout_;
+
+    // Indexed by parameter index; knobs_[kParameterOutputGain] stays null
+    // (Output Gain is the master strip's fader, see isFaderParam()).
+    std::array<std::unique_ptr<audioplugins::common::hui::dgl::RotaryKnob>, kNumParams> knobs_;
+    audioplugins::common::hui::dgl::MasterStrip master_;
+    // Non-owning: the strip's Output Gain fader (owned by master_).
+    audioplugins::common::hui::dgl::LabeledFader* const fader_;
 
     // Raw, non-owning: BastosUI does not own the DSP instance's lifetime,
     // DPF does. Captured once in the constructor via
-    // getPluginInstancePointer() (DISTRHO_PLUGIN_WANT_DIRECT_ACCESS) --
-    // same idiom as Hex's HexUI::fPluginPtr.
+    // getPluginInstancePointer() (DISTRHO_PLUGIN_WANT_DIRECT_ACCESS).
     BastosPluginAdapter* const pluginPtr_;
 
-    // PresetBrowser is not a DGL widget (no UI base-class dependency), so
-    // it's a plain member, not heap-owned like the widgets below.
+    // PresetBrowser is not a DGL widget, so it's a plain member.
     audioplugins::common::presets::PresetBrowser presetBrowser_;
-    // Declared BEFORE presetSelector_ (constructed first) so an open preset
-    // dropdown draws over the zoom pills.
-    audioplugins::common::hui::dgl::ZoomPills zoomPills_;
-    std::unique_ptr<audioplugins::common::hui::dgl::PresetSelector> presetSelector_;
-    std::unique_ptr<audioplugins::common::hui::dgl::Button> saveButton_;
-    std::unique_ptr<audioplugins::common::hui::dgl::Button> deleteButton_;
+    // Shared header: owns the zoom pills, preset dropdown and SAVE/DELETE
+    // buttons (pills constructed before the dropdown so it draws over them).
+    // Declared after every other widget so the open dropdown overlays them too.
+    audioplugins::common::hui::dgl::PluginHeader header_;
 
-    void setKnobValue(uint32_t index, float value);
+    // Programmatic (no host echo) value set for any parameter: the knob, or
+    // the fader for Output Gain.
+    void setControlValue(uint32_t index, float value);
+    float controlValue(uint32_t index) const;
     void applyPreset(const audioplugins::common::presets::Preset& preset);
     std::vector<audioplugins::common::presets::ParameterValue> captureCurrentParameters() const;
-    // Pushes presetBrowser_'s current entries/index into presetSelector_ and
-    // updates deleteButton_'s enabled state. Called after construction and
-    // after any load/save/delete.
+    // Pushes presetBrowser_'s current entries/index into the header's
+    // selector and updates its DELETE button's enabled state.
     void refreshPresetControls();
 
     DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BastosUI)

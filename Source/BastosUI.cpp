@@ -1,6 +1,9 @@
 #include "BastosUI.h"
 #include "FactoryPresets.h"
 
+#include "audioplugins/common/hui/dgl/GroupPanel.h"
+
+#include <cmath>
 #include <cstdlib>
 #include <string>
 
@@ -9,120 +12,91 @@ START_NAMESPACE_DISTRHO
 namespace {
 
 namespace hui = audioplugins::common::hui;
+namespace bl = bastos::layout;
 
-DGL_NAMESPACE::Color toDglColor(const hui::Colour& c) noexcept
-{
-    return DGL_NAMESPACE::Color(static_cast<int>(c.r), static_cast<int>(c.g),
-                                 static_cast<int>(c.b), static_cast<float>(c.a) / 255.f);
-}
+// BastosLayout.h mirrors the parameter enum without including this header.
+static_assert(bl::kAtkGain == kParameterAtkGain && bl::kAtkSubCount == kParameterAtkSubCount &&
+              bl::kAtkSubLevel == kParameterAtkSubLevel && bl::kAtkUpperCount == kParameterAtkUpperCount &&
+              bl::kAtkUpperLevel == kParameterAtkUpperLevel && bl::kSusGain == kParameterSusGain &&
+              bl::kSusSubCount == kParameterSusSubCount && bl::kSusSubLevel == kParameterSusSubLevel &&
+              bl::kSusUpperCount == kParameterSusUpperCount && bl::kSusUpperLevel == kParameterSusUpperLevel &&
+              bl::kSpeed == kParameterSpeed && bl::kOutputGain == kParameterOutputGain &&
+              bl::kMix == kParameterMix && bl::kParamCount == kParameterCount,
+              "BastosLayout.h parameter indices must match the kParameter* enum");
+static_assert(bl::isFaderParam(kParameterOutputGain), "Output Gain is the master fader");
 
-// Chrome (background, panels, buttons, selector, pills) comes from the shared
-// hardware Theme / widget defaults. Only the per-section knob accents below
-// are plugin-specific (blue attack / teal sustain / gold global, from the
-// JUCE-era kAtkAccent/kSusAccent/kGlobAccent); they tint the knob cap/arc
-// only, the ring and ticks keep the theme defaults.
-const hui::Theme kTheme = hui::defaultTheme();
-const hui::Colour kBg        = kTheme.windowBackground;
-const hui::Colour kSectionBg = kTheme.widgetBackground;
+const hui::Theme& kTheme = hui::defaultTheme();
+
+// Per-section accents (blue attack / teal sustain / gold global, from the
+// JUCE-era kAtkAccent/kSusAccent/kGlobAccent): group titles and knob arcs.
 constexpr hui::Colour kAtkAccent { 0x44, 0xaa, 0xee, 0xff };
 constexpr hui::Colour kSusAccent { 0x44, 0xdd, 0xaa, 0xff };
 constexpr hui::Colour kGlobAccent{ 0xaa, 0xaa, 0x66, 0xff };
 
-hui::dgl::RotaryKnobPalette paletteFor(const hui::Colour& accent)
+constexpr float kLabelFontSize = 11.0f;
+// MasterStrip's own L/R label size; Bastos relabels them IN/OUT.
+constexpr float kMeterLabelFontSize = 10.0f;
+
+DGL_NAMESPACE::Color toDglColor(const hui::Colour& c) noexcept
 {
-    hui::dgl::RotaryKnobPalette p;
-    p.valueArc = accent;
-    p.valueArcGlow = accent;
-    return p;
+    return DGL_NAMESPACE::Color(static_cast<int>(c.r), static_cast<int>(c.g),
+                                static_cast<int>(c.b), static_cast<float>(c.a) / 255.f);
 }
 
-// Layout ported from the JUCE-era resized(): kW=660, kH=460, kKnobSize=72,
-// three ATTACK/SUSTAIN/GLOBAL columns plus a 2-meter strip on the right.
-// kH grows by kPresetBarH (24px) to fit the new preset bar above the
-// existing panel; every Y origin below that used to start at kHeaderH +
-// kMargin now starts kPresetBarH lower, matching Hex/Tank's precedent.
-constexpr int kW = 660, kH = 484;
-constexpr int kHeaderH = 36, kMargin = 10, kGap = 8;
-constexpr int kKnobSize = 72, kLabelH = 16, kMeterW = 14;
-constexpr int kAtkW = 240, kSusW = 240;
+// One entry per parameter index. Output Gain (the fader) has no knob: its
+// label and accent are unused, its range feeds the fader.
+struct ParamSpec { const char* id; float min, max, def; const hui::Colour* accent; const char* label; };
 
-// Preset bar: a new 24px row above the header, left-aligned -- same
-// constant values/spacing as Hex's HexUI.cpp (no reason to invent
-// different numbers for the same-shaped UI element).
-constexpr int kPresetBarH = 24;
-constexpr float kPresetBarX = 8.0f;
-constexpr float kPresetBarY = 8.0f;
-constexpr uint  kPresetBarRowH = 24;
-constexpr uint  kPresetSelectorW = 220;
-constexpr uint  kPresetButtonW = 56;
-constexpr float kPresetButtonGap = 6.0f;
-constexpr float kSaveButtonX = kPresetBarX + static_cast<float>(kPresetSelectorW) + 8.0f;
-constexpr float kDeleteButtonX = kSaveButtonX + static_cast<float>(kPresetButtonW) + kPresetButtonGap;
-
-struct KnobSpec { float min, max, def; hui::Colour accent; int col, row; };
-
-constexpr int kNumKnobSpecs = 13;
-
-constexpr KnobSpec kKnobSpecs[kNumKnobSpecs] = {
-    { BASTOS_PARAM_ATK_GAIN_MIN, BASTOS_PARAM_ATK_GAIN_MAX, BASTOS_PARAM_ATK_GAIN_DEFAULT, kAtkAccent, 0, 0 },
-    { BASTOS_PARAM_ATK_SUB_COUNT_MIN, BASTOS_PARAM_ATK_SUB_COUNT_MAX, BASTOS_PARAM_ATK_SUB_COUNT_DEFAULT, kAtkAccent, 0, 1 },
-    { BASTOS_PARAM_ATK_SUB_LEVEL_MIN, BASTOS_PARAM_ATK_SUB_LEVEL_MAX, BASTOS_PARAM_ATK_SUB_LEVEL_DEFAULT, kAtkAccent, 0, 1 },
-    { BASTOS_PARAM_ATK_UPPER_COUNT_MIN, BASTOS_PARAM_ATK_UPPER_COUNT_MAX, BASTOS_PARAM_ATK_UPPER_COUNT_DEFAULT, kAtkAccent, 0, 2 },
-    { BASTOS_PARAM_ATK_UPPER_LEVEL_MIN, BASTOS_PARAM_ATK_UPPER_LEVEL_MAX, BASTOS_PARAM_ATK_UPPER_LEVEL_DEFAULT, kAtkAccent, 0, 2 },
-    { BASTOS_PARAM_SUS_GAIN_MIN, BASTOS_PARAM_SUS_GAIN_MAX, BASTOS_PARAM_SUS_GAIN_DEFAULT, kSusAccent, 1, 0 },
-    { BASTOS_PARAM_SUS_SUB_COUNT_MIN, BASTOS_PARAM_SUS_SUB_COUNT_MAX, BASTOS_PARAM_SUS_SUB_COUNT_DEFAULT, kSusAccent, 1, 1 },
-    { BASTOS_PARAM_SUS_SUB_LEVEL_MIN, BASTOS_PARAM_SUS_SUB_LEVEL_MAX, BASTOS_PARAM_SUS_SUB_LEVEL_DEFAULT, kSusAccent, 1, 1 },
-    { BASTOS_PARAM_SUS_UPPER_COUNT_MIN, BASTOS_PARAM_SUS_UPPER_COUNT_MAX, BASTOS_PARAM_SUS_UPPER_COUNT_DEFAULT, kSusAccent, 1, 2 },
-    { BASTOS_PARAM_SUS_UPPER_LEVEL_MIN, BASTOS_PARAM_SUS_UPPER_LEVEL_MAX, BASTOS_PARAM_SUS_UPPER_LEVEL_DEFAULT, kSusAccent, 1, 2 },
-    { BASTOS_PARAM_SPEED_MIN, BASTOS_PARAM_SPEED_MAX, BASTOS_PARAM_SPEED_DEFAULT, kGlobAccent, 2, 0 },
-    { BASTOS_PARAM_OUTPUT_GAIN_MIN, BASTOS_PARAM_OUTPUT_GAIN_MAX, BASTOS_PARAM_OUTPUT_GAIN_DEFAULT, kGlobAccent, 2, 1 },
-    { BASTOS_PARAM_MIX_MIN, BASTOS_PARAM_MIX_MAX, BASTOS_PARAM_MIX_DEFAULT, kGlobAccent, 2, 2 },
+constexpr ParamSpec kParams[kParameterCount] = {
+    {"atk_gain",        BASTOS_PARAM_ATK_GAIN_MIN,        BASTOS_PARAM_ATK_GAIN_MAX,        BASTOS_PARAM_ATK_GAIN_DEFAULT,        &kAtkAccent,  "GAIN"},
+    {"atk_sub_count",   BASTOS_PARAM_ATK_SUB_COUNT_MIN,   BASTOS_PARAM_ATK_SUB_COUNT_MAX,   BASTOS_PARAM_ATK_SUB_COUNT_DEFAULT,   &kAtkAccent,  "SUB #"},
+    {"atk_sub_level",   BASTOS_PARAM_ATK_SUB_LEVEL_MIN,   BASTOS_PARAM_ATK_SUB_LEVEL_MAX,   BASTOS_PARAM_ATK_SUB_LEVEL_DEFAULT,   &kAtkAccent,  "SUB LVL"},
+    {"atk_upper_count", BASTOS_PARAM_ATK_UPPER_COUNT_MIN, BASTOS_PARAM_ATK_UPPER_COUNT_MAX, BASTOS_PARAM_ATK_UPPER_COUNT_DEFAULT, &kAtkAccent,  "UPPER #"},
+    {"atk_upper_level", BASTOS_PARAM_ATK_UPPER_LEVEL_MIN, BASTOS_PARAM_ATK_UPPER_LEVEL_MAX, BASTOS_PARAM_ATK_UPPER_LEVEL_DEFAULT, &kAtkAccent,  "UPPER LVL"},
+    {"sus_gain",        BASTOS_PARAM_SUS_GAIN_MIN,        BASTOS_PARAM_SUS_GAIN_MAX,        BASTOS_PARAM_SUS_GAIN_DEFAULT,        &kSusAccent,  "GAIN"},
+    {"sus_sub_count",   BASTOS_PARAM_SUS_SUB_COUNT_MIN,   BASTOS_PARAM_SUS_SUB_COUNT_MAX,   BASTOS_PARAM_SUS_SUB_COUNT_DEFAULT,   &kSusAccent,  "SUB #"},
+    {"sus_sub_level",   BASTOS_PARAM_SUS_SUB_LEVEL_MIN,   BASTOS_PARAM_SUS_SUB_LEVEL_MAX,   BASTOS_PARAM_SUS_SUB_LEVEL_DEFAULT,   &kSusAccent,  "SUB LVL"},
+    {"sus_upper_count", BASTOS_PARAM_SUS_UPPER_COUNT_MIN, BASTOS_PARAM_SUS_UPPER_COUNT_MAX, BASTOS_PARAM_SUS_UPPER_COUNT_DEFAULT, &kSusAccent,  "UPPER #"},
+    {"sus_upper_level", BASTOS_PARAM_SUS_UPPER_LEVEL_MIN, BASTOS_PARAM_SUS_UPPER_LEVEL_MAX, BASTOS_PARAM_SUS_UPPER_LEVEL_DEFAULT, &kSusAccent,  "UPPER LVL"},
+    {"speed",           BASTOS_PARAM_SPEED_MIN,           BASTOS_PARAM_SPEED_MAX,           BASTOS_PARAM_SPEED_DEFAULT,           &kGlobAccent, "SPEED"},
+    {"output_gain",     BASTOS_PARAM_OUTPUT_GAIN_MIN,     BASTOS_PARAM_OUTPUT_GAIN_MAX,     BASTOS_PARAM_OUTPUT_GAIN_DEFAULT,     &kGlobAccent, "VOL"},
+    {"mix",             BASTOS_PARAM_MIX_MIN,             BASTOS_PARAM_MIX_MAX,             BASTOS_PARAM_MIX_DEFAULT,             &kGlobAccent, "MIX"},
 };
 
-// Helper shared by the constructor to avoid repeating the construct/size/
-// position/palette/range/gesture-bracketing dance per knob. Gesture
-// bracketing follows DPF's own idiom (examples/CairoUI: drag started/
-// finished -> editParameter, value changed -> setParameterValue) -- same
-// pattern as Hex's HexUI.cpp::makeKnob().
-std::unique_ptr<hui::dgl::RotaryKnob> makeKnob(BastosUI& ui, const KnobSpec& spec,
-                                                int x, int y, uint32_t paramIndex)
+int px(float v) noexcept { return static_cast<int>(std::lround(v)); }
+uint upx(float v) noexcept { return static_cast<uint>(std::lround(v)); }
+
+// Gesture bracketing follows DPF's own idiom (examples/CairoUI: drag
+// started/finished -> editParameter, value changed -> setParameterValue).
+template <class Control>
+void bindToParameter(BastosUI& ui, Control& control, const uint32_t paramIndex)
 {
-    std::unique_ptr<hui::dgl::RotaryKnob> knob(new hui::dgl::RotaryKnob(&ui));
+    control.onDragStateChanged = [&ui, paramIndex](const bool started) { ui.editParameter(paramIndex, started); };
+    control.onValueChanged = [&ui, paramIndex](const float value) { ui.setParameterValue(paramIndex, value); };
+}
+
+std::unique_ptr<hui::dgl::RotaryKnob> makeKnob(BastosUI& ui, const bl::KnobSlot& slot, const uint32_t paramIndex)
+{
+    const ParamSpec& spec = kParams[paramIndex];
+    auto knob = std::make_unique<hui::dgl::RotaryKnob>(&ui);
     knob->setRange(spec.min, spec.max);
     knob->setDefaultValue(spec.def);
     knob->setValue(spec.def);
-    knob->setPalette(paletteFor(spec.accent));
-    knob->setAbsolutePos(x, y);
-    knob->setSize(kKnobSize, kKnobSize);
-
-    hui::dgl::RotaryKnob* const rawKnob = knob.get();
-    rawKnob->onDragStateChanged = [&ui, paramIndex](const bool started)
-    {
-        ui.editParameter(paramIndex, started);
-    };
-    rawKnob->onValueChanged = [&ui, paramIndex](const float value)
-    {
-        ui.setParameterValue(paramIndex, value);
-    };
-
+    knob->setPalette(hui::dgl::knobPaletteFor(*spec.accent));
+    knob->setAbsolutePos(px(slot.body.x), px(slot.body.y));
+    knob->setSize(upx(slot.body.w), upx(slot.body.h));
+    bindToParameter(ui, *knob, paramIndex);
     return knob;
 }
 
-std::unique_ptr<hui::dgl::PresetSelector> makePresetSelector(BastosUI& ui)
+// Every knob, indexed by parameter index; the fader's slot stays null.
+std::array<std::unique_ptr<hui::dgl::RotaryKnob>, kParameterCount> makeKnobs(BastosUI& ui, const bl::UiLayout& layout)
 {
-    std::unique_ptr<hui::dgl::PresetSelector> selector(new hui::dgl::PresetSelector(&ui));
-    selector->setClosedSize(kPresetSelectorW, kPresetBarRowH);
-    selector->setAbsolutePos(static_cast<int>(kPresetBarX), static_cast<int>(kPresetBarY));
-    return selector;
-}
-
-std::unique_ptr<hui::dgl::Button> makeButton(BastosUI& ui, const char* label, float x)
-{
-    std::unique_ptr<hui::dgl::Button> button(new hui::dgl::Button(&ui));
-    button->setLabel(label);
-    button->setSize(kPresetButtonW, kPresetBarRowH);
-    button->setAbsolutePos(static_cast<int>(x), static_cast<int>(kPresetBarY));
-    return button;
+    std::array<std::unique_ptr<hui::dgl::RotaryKnob>, kParameterCount> knobs;
+    for (uint32_t i = 0; i < kParameterCount; ++i)
+        if (!bl::isFaderParam(i))
+            knobs[i] = makeKnob(ui, layout.knob[i], i);
+    return knobs;
 }
 
 // Linux-only for now, matching Hex's hexUserPresetsDirectory() precedent
@@ -135,71 +109,34 @@ std::string bastosUserPresetsDirectory()
     return std::string(home) + "/.config/Bastos/presets";
 }
 
-// Table-driven mapping between BASTOS_PARAM symbol strings and their DPF
-// parameter index, shared by applyPreset() and captureCurrentParameters()
-// so the 13 id strings are written exactly once, not duplicated in both
-// directions.
-struct ParamIdEntry { const char* id; uint32_t index; };
-
-constexpr int kNumParamIds = 13;
-
-constexpr ParamIdEntry kParamIds[kNumParamIds] = {
-    {"atk_gain",        kParameterAtkGain},
-    {"atk_sub_count",   kParameterAtkSubCount},
-    {"atk_sub_level",   kParameterAtkSubLevel},
-    {"atk_upper_count", kParameterAtkUpperCount},
-    {"atk_upper_level", kParameterAtkUpperLevel},
-    {"sus_gain",        kParameterSusGain},
-    {"sus_sub_count",   kParameterSusSubCount},
-    {"sus_sub_level",   kParameterSusSubLevel},
-    {"sus_upper_count", kParameterSusUpperCount},
-    {"sus_upper_level", kParameterSusUpperLevel},
-    {"speed",           kParameterSpeed},
-    {"output_gain",     kParameterOutputGain},
-    {"mix",             kParameterMix},
-};
-
 } // namespace
 
 BastosUI::BastosUI()
     : UI(DISTRHO_UI_DEFAULT_WIDTH, DISTRHO_UI_DEFAULT_HEIGHT, true),
+      layout_(bl::computeLayout()),
+      // Widgets are built in the initialiser list, before header_ (the last
+      // member), so an open preset dropdown draws over them.
+      knobs_(makeKnobs(*this, layout_)),
+      master_(this, /*withFader=*/true),
+      fader_(master_.fader()),
       pluginPtr_(static_cast<BastosPluginAdapter*>(getPluginInstancePointer())),
       presetBrowser_(bastosFactoryPresets(), bastosUserPresetsDirectory(), "com.spellbound.bastos"),
-      zoomPills_(this, kW, kH, hui::dgl::PillSelectorPalette{},
-                 [this](const char* key, const char* value) { setState(key, value); }),
-      presetSelector_(makePresetSelector(*this)),
-      saveButton_(makeButton(*this, "SAVE", kSaveButtonX)),
-      deleteButton_(makeButton(*this, "DELETE", kDeleteButtonX))
+      header_(this, "SPELLBOUND HAVOC", DISTRHO_UI_DEFAULT_WIDTH, DISTRHO_UI_DEFAULT_HEIGHT,
+              [this](const char* key, const char* value) { setState(key, value); })
 {
-    const int colX[3] = { kMargin, kMargin + kAtkW + kGap, kMargin + kAtkW + kGap + kSusW + kGap };
-    const int bodyY = kPresetBarH + kHeaderH + kMargin;
-    const int rowH  = kKnobSize + kLabelH + kGap;
+    loadSharedResources();
+    header_.setTagline("Transient Devastation");
+    DISTRHO_SAFE_ASSERT(header_.bandHeight() == layout_.header.bandHeight);
 
-    // Two knobs per row for the sub/upper pairs (rows 1/2); one per row 0/global.
-    int rowSlot[3][3] = {{0,0,0},{0,0,0},{0,0,0}};
-    int slotOffsetInRow[kNumKnobs] = {0};
-    for (int i = 0; i < kNumKnobs; ++i)
-        slotOffsetInRow[i] = rowSlot[kKnobSpecs[i].col][kKnobSpecs[i].row]++;
+    master_.layout(layout_.master);
+    const ParamSpec& out = kParams[kParameterOutputGain];
+    fader_->setRange(out.min, out.max);
+    fader_->setDefaultValue(out.def);
+    fader_->setValue(out.def);
+    fader_->setLabel(out.label);
+    bindToParameter(*this, *fader_, kParameterOutputGain);
 
-    for (int i = 0; i < kNumKnobs; ++i)
-    {
-        const KnobSpec& spec = kKnobSpecs[i];
-        const int x = colX[spec.col] + 4 + slotOffsetInRow[i] * (kKnobSize + 4);
-        const int y = bodyY + 28 + spec.row * rowH;
-        knobs_[static_cast<size_t>(i)] = makeKnob(*this, spec, x, y, static_cast<uint32_t>(i));
-    }
-
-    inMeter_  = std::make_unique<audioplugins::common::hui::dgl::VuMeter>(this);
-    outMeter_ = std::make_unique<audioplugins::common::hui::dgl::VuMeter>(this);
-    const int meterX = kW - kMargin - 2 * kMeterW - kGap;
-    const int meterY = bodyY + 20;
-    const int meterH = kH - meterY - kMargin - 10;
-    inMeter_->setAbsolutePos(meterX, meterY);
-    inMeter_->setSize(kMeterW, static_cast<uint>(meterH));
-    outMeter_->setAbsolutePos(meterX + kMeterW + kGap, meterY);
-    outMeter_->setSize(kMeterW, static_cast<uint>(meterH));
-
-    presetSelector_->onIndexSelected = [this](const int index)
+    header_.presets().onIndexSelected = [this](const int index)
     {
         if (const auto* preset = presetBrowser_.selectIndex(index))
         {
@@ -208,13 +145,13 @@ BastosUI::BastosUI()
         }
     };
 
-    deleteButton_->onClick = [this]()
+    header_.deleteButton().onClick = [this]()
     {
         if (presetBrowser_.deleteCurrent())
             refreshPresetControls();
     };
 
-    saveButton_->onClick = [this]()
+    header_.saveButton().onClick = [this]()
     {
         const std::string startDir = bastosUserPresetsDirectory();
         FileBrowserOptions options;
@@ -225,17 +162,12 @@ BastosUI::BastosUI()
         openFileBrowser(options);
     };
 
-    // Right-aligned in the preset bar, clear of the DELETE button.
-    zoomPills_.place(static_cast<float>(kW) - kMargin, kPresetBarY,
-                     static_cast<float>(kPresetBarRowH),
-                     kDeleteButtonX + static_cast<float>(kPresetButtonW) + 8.0f);
-
     refreshPresetControls();
 }
 
 void BastosUI::stateChanged(const char* key, const char* value)
 {
-    zoomPills_.onStateChanged(key, value);
+    header_.zoom().onStateChanged(key, value);
 }
 
 void BastosUI::uiFileBrowserSelected(const char* filename)
@@ -254,18 +186,35 @@ void BastosUI::uiFileBrowserSelected(const char* filename)
         refreshPresetControls();
 }
 
+void BastosUI::setControlValue(const uint32_t index, const float value)
+{
+    // setValue() on either widget deliberately does not fire onValueChanged,
+    // so host automation / preset recall cannot loop back out to the host.
+    if (index >= kNumParams)
+        return;
+    if (bl::isFaderParam(index))
+        fader_->setValue(value);
+    else
+        knobs_[index]->setValue(value);
+}
+
+float BastosUI::controlValue(const uint32_t index) const
+{
+    return bl::isFaderParam(index) ? fader_->getValue() : knobs_[index]->getValue();
+}
+
 void BastosUI::applyPreset(const audioplugins::common::presets::Preset& preset)
 {
     for (const auto& pv : preset.parameters)
     {
-        for (const auto& entry : kParamIds)
+        for (uint32_t i = 0; i < kNumParams; ++i)
         {
-            if (pv.id == entry.id)
+            if (pv.id == kParams[i].id)
             {
-                knobs_[entry.index]->setValue(pv.value);
-                editParameter(entry.index, true);
-                setParameterValue(entry.index, pv.value);
-                editParameter(entry.index, false);
+                setControlValue(i, pv.value);
+                editParameter(i, true);
+                setParameterValue(i, pv.value);
+                editParameter(i, false);
                 break;
             }
         }
@@ -277,80 +226,89 @@ void BastosUI::applyPreset(const audioplugins::common::presets::Preset& preset)
 std::vector<audioplugins::common::presets::ParameterValue> BastosUI::captureCurrentParameters() const
 {
     std::vector<audioplugins::common::presets::ParameterValue> parameters;
-    parameters.reserve(kNumParamIds);
-    for (const auto& entry : kParamIds)
-        parameters.push_back({entry.id, knobs_[entry.index]->getValue()});
+    parameters.reserve(kNumParams);
+    for (uint32_t i = 0; i < kNumParams; ++i)
+        parameters.push_back({kParams[i].id, controlValue(i)});
     return parameters;
 }
 
 void BastosUI::refreshPresetControls()
 {
-    presetSelector_->setEntries(presetBrowser_.getEntries());
-    presetSelector_->setCurrentIndex(presetBrowser_.getCurrentIndex());
+    header_.presets().setEntries(presetBrowser_.getEntries());
+    header_.presets().setCurrentIndex(presetBrowser_.getCurrentIndex());
 
     const auto entries = presetBrowser_.getEntries();
     const int idx = presetBrowser_.getCurrentIndex();
     const bool isFactory = (idx >= 0 && static_cast<size_t>(idx) < entries.size())
                                 ? entries[static_cast<size_t>(idx)].isFactory
                                 : true;
-    deleteButton_->setEnabled(!isFactory);
+    header_.deleteButton().setEnabled(!isFactory);
 }
 
 void BastosUI::parameterChanged(const uint32_t index, const float value)
 {
-    setKnobValue(index, value);
-}
-
-void BastosUI::setKnobValue(const uint32_t index, const float value)
-{
-    if (index < static_cast<uint32_t>(kNumKnobs))
-        knobs_[index]->setValue(value);
+    setControlValue(index, value);
 }
 
 void BastosUI::uiIdle()
 {
-    zoomPills_.onIdle();
+    header_.zoom().onIdle();
 
     // Direct-access read of the DSP instance's atomically-published peak
     // meters -- see DistrhoPluginInfo.h's DISTRHO_PLUGIN_WANT_DIRECT_ACCESS
-    // comment for why this isn't a DPF parameter. pluginPtr_ is confirmed
-    // non-null for every target Bastos currently builds (DPF passes the
-    // real DSP instance pointer to every UI it constructs), but this derefs
-    // it every idle tick, so guard it anyway as cheap insurance.
+    // comment for why this isn't a DPF parameter. Guarded as cheap insurance.
     if (pluginPtr_ == nullptr)
         return;
 
-    inMeter_->pushLevel(pluginPtr_->getInputLevel());
-    outMeter_->pushLevel(pluginPtr_->getOutputLevel());
+    master_.left().pushLevel(pluginPtr_->getInputLevel());
+    master_.right().pushLevel(pluginPtr_->getOutputLevel());
 }
 
 void BastosUI::onNanoDisplay()
 {
     beginPath();
     rect(0, 0, static_cast<float>(getWidth()), static_cast<float>(getHeight()));
-    fillColor(toDglColor(kBg));
+    fillColor(toDglColor(kTheme.windowBackground));
     fill();
     closePath();
 
-    // Section backgrounds -- plain rounded rects, ported from the JUCE-era
-    // drawSectionBg() (no reusable "panel" widget exists in Common, and one
-    // rounded rect + a label doesn't warrant adding one).
-    const int bodyY = kPresetBarH + kHeaderH + kMargin;
-    const int bodyH = kH - bodyY - kMargin;
-    const int atkX = kMargin, susX = atkX + kAtkW + kGap, globX = susX + kSusW + kGap;
-    const int globW = kW - globX - kMargin - 2 * kMeterW - kGap * 2;
+    hui::dgl::drawGroupPanel(*this, layout_.atk, "ATTACK", &kAtkAccent);
+    hui::dgl::drawGroupPanel(*this, layout_.sus, "SUSTAIN", &kSusAccent);
+    hui::dgl::drawGroupPanel(*this, layout_.glob, "GLOBAL", &kGlobAccent);
 
-    auto drawPanel = [this](int x, int y, int w, int h) {
+    fontFace(NANOVG_DEJAVU_SANS_TTF);
+    fontSize(kLabelFontSize);
+    textAlign(ALIGN_CENTER | ALIGN_MIDDLE);
+    fillColor(toDglColor(kTheme.text));
+    for (uint32_t i = 0; i < kNumParams; ++i)
+    {
+        if (bl::isFaderParam(i))
+            continue;
+        const bl::Rect& r = layout_.knob[i].label;
+        text(r.x + r.w * 0.5f, r.y + r.h * 0.5f, kParams[i].label, nullptr);
+    }
+
+    // The strip's meters show this plugin's input and output peaks, not a
+    // stereo pair: replace its "L"/"R" captions with "IN"/"OUT".
+    master_.draw(*this);
+    const auto strip = hui::computeMasterStripLayout(layout_.master, true);
+    const hui::MasterRect* const meterLabels[2] = {&strip.labelLeft, &strip.labelRight};
+    const char* const meterNames[2] = {"IN", "OUT"};
+    for (const hui::MasterRect* r : meterLabels)
+    {
         beginPath();
-        roundedRect(static_cast<float>(x), static_cast<float>(y),
-                    static_cast<float>(w), static_cast<float>(h), 6.f);
-        fillColor(toDglColor(kSectionBg));
+        rect(r->x, r->y, r->w, r->h);
+        fillColor(toDglColor(kTheme.widgetBackground));
         fill();
         closePath();
-    };
-    drawPanel(atkX, bodyY, kAtkW, bodyH);
-    drawPanel(susX, bodyY, kSusW, bodyH);
-    drawPanel(globX, bodyY, globW, bodyH);
+    }
+    fontSize(kMeterLabelFontSize);
+    fillColor(toDglColor(kTheme.textDim));
+    for (int i = 0; i < 2; ++i)
+        text(meterLabels[i]->x + meterLabels[i]->w * 0.5f, meterLabels[i]->y + meterLabels[i]->h * 0.5f,
+             meterNames[i], nullptr);
+
+    header_.drawTitle(*this, layout_.width); // base coordinates (UI auto-scale)
 }
 
 UI* createUI() { return new BastosUI(); }
