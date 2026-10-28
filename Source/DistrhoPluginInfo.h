@@ -55,8 +55,8 @@
 
 #define DISTRHO_UI_USE_NANOVG     1
 #define DISTRHO_UI_USER_RESIZABLE 1
-#define DISTRHO_UI_DEFAULT_WIDTH  660
-#define DISTRHO_UI_DEFAULT_HEIGHT 484
+#define DISTRHO_UI_DEFAULT_WIDTH  596  // = bastos::layout::computeLayout().width (checked by Tests/test_bastoslayout.cpp)
+#define DISTRHO_UI_DEFAULT_HEIGHT 414  // = bastos::layout::computeLayout().height
 #define DISTRHO_UI_FILE_BROWSER   1
 
 /*

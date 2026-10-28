@@ -1,5 +1,6 @@
 #include "test_runner.h"
 #include "../Source/BastosLayout.h"
+#include "../Source/DistrhoPluginInfo.h"
 
 #include <audioplugins/common/hui/GroupLayout.h>
 #include <audioplugins/common/hui/HeaderLayout.h>
@@ -138,7 +139,31 @@ void width_at_least_header_min()
 {
     const auto l = bl::computeLayout();
     CHECK(l.width >= hui::kHeaderMinWidth);
-    CHECK(l.header.bandHeight == hui::computeHeaderLayout(l.width).bandHeight);
+}
+
+// The header shows the product hook ("Transient Devastation") under the title,
+// so its band is the tagline-sized one and every group starts below it.
+void header_band_includes_tagline()
+{
+    const auto l = bl::computeLayout();
+    CHECK(bl::kHeaderHasTagline);
+    CHECK(l.header.bandHeight == hui::computeHeaderLayout(l.width, true).bandHeight);
+    CHECK(l.header.bandHeight > hui::computeHeaderLayout(l.width, false).bandHeight);
+    CHECK(l.atk.y == l.header.bandHeight + bl::kTopGap);
+}
+
+// DistrhoPluginInfo.h (macros + enum only, no DPF include) must agree with the
+// layout: base window size for UI(W,H,true) and the parameter indices.
+void base_size_and_indices_match_plugin_info()
+{
+    const auto l = bl::computeLayout();
+    CHECK(static_cast<float>(DISTRHO_UI_DEFAULT_WIDTH) == l.width);
+    CHECK(static_cast<float>(DISTRHO_UI_DEFAULT_HEIGHT) == l.height);
+    CHECK(l.width == 596.f);
+    CHECK(l.height == 414.f);
+    CHECK(bl::kOutputGain == static_cast<uint32_t>(kParameterOutputGain));
+    CHECK(bl::kMix == static_cast<uint32_t>(kParameterMix));
+    CHECK(bl::kParamCount == static_cast<uint32_t>(kParameterCount));
 }
 
 void output_gain_has_no_knob_slot()
@@ -175,6 +200,8 @@ int main()
     knob_size_72();
     master_rightmost_full_height();
     width_at_least_header_min();
+    header_band_includes_tagline();
+    base_size_and_indices_match_plugin_info();
     output_gain_has_no_knob_slot();
     fader_param_routing();
     TEST_SUMMARY();

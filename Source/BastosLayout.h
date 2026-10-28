@@ -19,8 +19,9 @@ namespace hui = audioplugins::common::hui;
 struct Rect { float x = 0, y = 0, w = 0, h = 0; };
 struct KnobSlot { Rect body; Rect label; };
 
-// Parameter indices mirror the kParameter* enum in DistrhoPluginInfo.h (not
-// included: it pulls in DPF); BastosUI.cpp static_asserts the two stay in sync.
+// Parameter indices mirror the kParameter* enum in DistrhoPluginInfo.h (kept
+// free of that header so this file stays pure geometry); BastosUI.cpp
+// static_asserts the two stay in sync and the layout test checks them too.
 constexpr uint32_t kAtkGain = 0, kAtkSubCount = 1, kAtkSubLevel = 2, kAtkUpperCount = 3,
                    kAtkUpperLevel = 4, kSusGain = 5, kSusSubCount = 6, kSusSubLevel = 7,
                    kSusUpperCount = 8, kSusUpperLevel = 9, kSpeed = 10, kOutputGain = 11,
@@ -37,6 +38,10 @@ struct UiLayout {
     std::array<KnobSlot, kParamCount> knob;  // by parameter index; knob[kOutputGain] unused (zero)
     hui::MasterRect master;
 };
+
+// The header shows the product hook under the title (PluginHeader::setTagline),
+// which makes its band kHeaderTaglineH taller; content starts below that band.
+constexpr bool kHeaderHasTagline = true;
 
 constexpr float kMargin = 10, kGap = 8, kTopGap = 8;
 constexpr float kKnobSize = 72, kLabelH = 14, kKnobGap = 8, kRowGap = 6;
@@ -64,7 +69,7 @@ inline UiLayout computeLayout() noexcept
 {
     UiLayout l;
     l.width = 2 * kMargin + 2 * kSectionW + kGlobalW + hui::kMasterW + 3 * kGap;
-    l.header = hui::computeHeaderLayout(l.width);
+    l.header = hui::computeHeaderLayout(l.width, kHeaderHasTagline);
     const float top = l.header.bandHeight + kTopGap;
     l.height = top + kGroupH + kMargin;
 
